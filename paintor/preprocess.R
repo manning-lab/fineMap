@@ -17,7 +17,7 @@ mac <- as.numeric(inputs_args[7])
 pval.col <- input_args[8]
 effect.col <- input_args[9]
 
-## Functions 
+## # these are from the DCC pipeline, credit -> S. Gogarten 
 .variantDF <- function(gds) {
   data.frame(variant.id=seqGetData(gds, "variant.id"),
              chromosome=seqGetData(gds, "chromosome"),
