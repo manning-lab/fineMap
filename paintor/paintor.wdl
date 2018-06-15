@@ -24,11 +24,11 @@ task preprocess {
 	Int disk
 
 	command {
-		R --vanilla --args ${sep = ":" interval} ${gds_file} ${sep="," sample_ids} ${sep="," assoc_files} ${annotation_file} ${sep="," anno_cols} ${default="10" mac} ${pval_col} ${effect_col} < /finemapping/paintor/preprocess.R
+		R --vanilla --args ${sep = ":" interval} ${gds_file} ${sep="," sample_ids} ${sep="," assoc_files} ${annotation_file} ${sep="," anno_cols} ${default="10" mac} ${pval_col} ${effect_col} < /fineMap/paintor/preprocess.R
 	}
 
 	runtime {
-		docker: "manninglab/finemapping:latest"
+		docker: "tmajarian/paintor:0.3"
 		disks: "local-disk ${disk} SSD"
 		memory: "${memory}G"
 	}
@@ -55,9 +55,9 @@ task runPaintor {
 	Int memory
 	Int disk
 
-	Array[String] zcol = readlines(zcol_names)
-	Array[String] ld = readlines(ld_names)
-	Array[String] anno = readlines(anno_names)
+	Array[String] zcol = read_lines(zcol_names)
+	Array[String] ld = read_lines(ld_names)
+	Array[String] anno = read_lines(anno_names)
 
 	command {
 		echo "Locus1" >> input.txt && \
@@ -70,7 +70,7 @@ task runPaintor {
 	}
 
 	runtime {
-		docker: "manninglab/finemapping:latest"
+		docker: "tmajarian/paintor:0.3"
 		disks: "local-disk ${disk} SSD"
 		memory: "${memory}G"
 	}
@@ -92,16 +92,17 @@ task summary {
 	Int memory
 	Int disk
 
-	Array[String] zcol = readlines(zcol_names)
-	Array[String] ld = readlines(ld_names)
-	Array[String] anno = readlines(anno_names)
+	Array[String] zcol = read_lines(zcol_names)
+	Array[String] ld = read_lines(ld_names)
+	Array[String] anno = read_lines(anno_names)
+	# R --vanilla --args ${paintor_results} ${sep="," ld_files} ${annotation_out} ${assoc_out} ${sep="," zcol} ${sep="," ld} ${sep="," anno} < /fineMap/paintor/summary.R
 
 	command {
-		R --vanilla --args ${paintor_results} ${sep="," ld_files} ${annotation_out} ${assoc_out} ${sep="," zcol} ${sep="," ld} ${sep="," anno} < /finemapping/paintor/summary.R
+		touch Locus1.plots.png
 	}
 
 	runtime {
-		docker: "manninglab/finemapping:latest"
+		docker: "tmajarian/paintor:0.3"
 		disks: "local-disk ${disk} SSD"
 		memory: "${memory}G"
 	}

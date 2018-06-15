@@ -183,5 +183,8 @@ write.table(zcol.names, file = "zcol.txt", row.names = F, col.names = F, sep = "
 # export the ld names
 write.table(ld.names, file = "ld.txt", row.names = F, col.names = F, sep = "\n", quote = F)
 
+# export the annotation names
+write.table(anno.cols, file = "anno.txt", row.names = F, col.names = F, sep = "\n", quote = F)
+
 # close gds
 seqClose(gds.data)
