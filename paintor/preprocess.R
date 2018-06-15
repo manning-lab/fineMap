@@ -13,7 +13,7 @@ sample.ids.files <- unlist(strsplit(input_args[3],","))
 assoc.files <- unlist(strsplit(input_args[4],","))
 annotation.file <- input_args[5]
 anno.cols <- unlist(strsplit(input_args[6],","))
-mac <- as.numeric(inputs_args[7])
+mac <- as.numeric(input_args[7])
 pval.col <- input_args[8]
 effect.col <- input_args[9]
 
