@@ -2,7 +2,7 @@
 # R --vanilla --args ${sep = ":" interval} ${gds_file} ${sep="," sample_ids} ${sep="," assoc_files} ${annotation_file} ${sep="," anno_cols} < /finemapping/paintor/preprocess.R
 
 # Load packages
-packages <- c("data.table","SeqArray", "GenomicRanges", "SNPRelate")
+packages <- c("data.table","SeqArray", "GenomicRanges", "SNPRelate", "dplyr", "tidyr", "SeqVarTools")
 lapply(packages, library, character.only = TRUE)
 
 # Parse inputs
@@ -16,6 +16,26 @@ anno.cols <- unlist(strsplit(input_args[6],","))
 mac <- as.numeric(inputs_args[7])
 pval.col <- input_args[8]
 effect.col <- input_args[9]
+
+## Functions 
+.variantDF <- function(gds) {
+  data.frame(variant.id=seqGetData(gds, "variant.id"),
+             chromosome=seqGetData(gds, "chromosome"),
+             position=seqGetData(gds, "position"),
+             ref=refChar(gds),
+             alt=altChar(gds),
+             nAlleles=seqNumAllele(gds),
+             stringsAsFactors=FALSE)
+}
+.expandAlleles <- function(gds) {
+  .variantDF(gds) %>%
+    separate_rows_("alt", sep=",") %>%
+    rename_(allele="alt") %>%
+    group_by_("variant.id") %>%
+    mutate_(allele.index=~1:n()) %>%
+    as.data.frame()
+}
+##
 
 # parse interval
 chr <- interval[1]
@@ -57,40 +77,42 @@ for (gind in seq(1,length(sample.ids))){
 var.union = Reduce(intersect, var.ids)
 ##
 
-## Now calculate the LD matricies
-# reset filter (not sure if this is necessary)
-seqResetFilter(gds.data)
-
-for (gind in seq(1,length(sample.ids))){
-  # calculate LD
-  ld <- data.frame(snpgdsLDMat(gds.data, method = "corr", slide = 0, sample.id = sample.ids[[gind]], snp.id = var.union)$LD)
-  ld <- ld * ld
-  
-  # save it
-  write.table(ld, file = paste0("Locus1.",ld.names[gind]), row.names = F, col.names = F, sep = " ", quote = F)
-}
-##
-
 ## Now other outputs
 # prepare marker output
 seqResetFilter(gds.data)
 seqSetFilter(gds.data, variant.id = var.union)
 
 # gather the data
-chr.v <- seqGetData(gds.data, "chromosome")
-pos <- seqGetData(gds.data, "position")
-ref <- seqGetData(gds.data, "$ref")
-alt <- seqGetData(gds.data, "$alt")
+markers <- .expandAlleles(gds.data)[,c(1,2,3,4,5)]
+names(markers) <- c("variant.id","chr","pos","ref","alt")
+# chr.v <- seqGetData(gds.data, "chromosome")
+# pos <- seqGetData(gds.data, "position")
+# ref <- seqGetData(gds.data, "$ref")
+# alt <- seqGetData(gds.data, "$alt")
 
-# close gds
-seqClose(gds.data)
-
-markers <- data.frame(cbind(chr.v, pos, ref, alt))
-names(markers)[1] <- "chr"
+# markers <- data.frame(cbind(chr.v, pos, ref, alt))
+# names(markers)[1] <- "chr"
 markers$marker <- paste(markers$chr, markers$pos, markers$ref, markers$alt, sep=":")
+##
 
-# write out the table
-write.table(markers[,c(2,3,4,5)], file = "Locus1.markers.csv", row.names = F, col.names = T, sep = ",", quote = F)
+## Now get the zscores
+# calculate z
+for (gind in seq(1,length(assoc.files))){
+  c.assoc <- fread(assoc.files[gind], data.table = F, stringsAsFactors = F)[,c("chr","pos","ref","alt",pval.col,effect.col)]
+  c.assoc$marker <- paste(c.assoc$chr, c.assoc$pos, c.assoc$ref, c.assoc$alt, sep = ":")
+  c.assoc <- c.assoc[c.assoc$marker %in% markers$marker, ]
+  c.assoc$Z <- abs(qnorm(c.assoc[, pval.col]/2))*sign(c.assoc[,effect.col])
+  c.assoc <- c.assoc[,c("marker","Z")]
+  colnames(c.assoc) <- c("marker", zcol.names[gind])
+  markers <- merge(markers, c.assoc, by.x = "marker", by.y = "marker", all.x = T)
+}
+
+# remove any rows with NAs
+markers <- na.omit(markers)
+
+# final assoc to save
+final <- markers[,c("chr","pos",zcol.names)]
+names(final)[1] <- "CHR"
 ##
 
 ## This will process the annotation data
@@ -102,9 +124,7 @@ if (startsWith(anno.data[1,1], "chr") && !(startsWith(chr, "chr"))){
   anno.data[,1] <- sub("chr","",anno.data[,1])
 } else if (!(startsWith(anno.data[1,1], "chr")) && startsWith(chr, "chr")){
   anno.data[,1] <- sub("^","chr",anno.data[,1])
-} else {
-  pass
-}
+} else {}
 
 # make anno into granges object
 anno.data.gr <- GRanges(seqnames = anno.data[,1], ranges = IRanges(start = anno.data[,2], end = anno.data[,3]), state = anno.data[,4])
@@ -133,30 +153,26 @@ anno.matrix <- matrix(data = 0, nrow = nrow(markers), ncol = nrow(state.map))
 for (i in seq(1,nrow(anno.matrix))){
   anno.matrix[i,markers$state.ind[i]] <- 1
 }
+##
+## Now calculate the LD matricies
+# reset filter (not sure if this is necessary)
+seqResetFilter(gds.data)
 
-# # remove values for annotations that we dont want
-# not.inds <- state.map[!(state.map$state %in% anno.cols), "ind"]
-# anno.matrix[,not.inds] <- 0
+for (gind in seq(1,length(sample.ids))){
+  # calculate LD
+  ld <- data.frame(snpgdsLDMat(gds.data, method = "corr", slide = 0, sample.id = sample.ids[[gind]], snp.id = markers$variant.id)$LD)
+  ld <- ld * ld
+  
+  # save it
+  write.table(ld, file = paste0("Locus1.",ld.names[gind]), row.names = F, col.names = F, sep = " ", quote = F)
+}
+##
+
+# write out the markers
+write.table(markers[,c("pos","ref","alt","marker")], file = "Locus1.markers.csv", row.names = F, col.names = T, sep = ",", quote = F)
 
 # save annotations
 write.table(anno.matrix, file="Locus1.annotations", quote=F, sep=" ", row.names=F, col.names = state.map$state)
-##
-
-## Now get the zscores
-# calculate z
-for (gind in seq(1,length(assoc.files))){
-  c.assoc <- fread(assoc.files[gind], data.table = F, stringsAsFactors = F)[,c("chr","pos","ref","alt",pval.col,effect.col)]
-  c.assoc$marker <- paste(c.assoc$chr, c.assoc$pos, c.assoc$ref, c.assoc$alt, sep = ":")
-  c.assoc <- c.assoc[c.assoc$marker %in% markers$marker, ]
-  c.assoc$Z <- abs(qnorm(c.assoc[, pval.col]/2))*sign(c.assoc[,effect.col])
-  c.assoc <- c.assoc[,c("marker","Z")]
-  colnames(c.assoc) <- c("marker", zcol.names[gind])
-  markers <- merge(markers, c.assoc, by.x = "marker", by.y = "marker", all.x = T)
-}
-
-# final assoc to save
-final <- markers[,c("chr","pos",zcol.names)]
-names(final)[1] <- "CHR"
 
 # save assoc file
 write.table(final, file="Locus1", sep=" ", row.names=F, quote=F)
@@ -167,3 +183,5 @@ write.table(zcol.names, file = "zcol.txt", row.names = F, col.names = F, sep = "
 # export the ld names
 write.table(ld.names, file = "ld.txt", row.names = F, col.names = F, sep = "\n", quote = F)
 
+# close gds
+seqClose(gds.data)
