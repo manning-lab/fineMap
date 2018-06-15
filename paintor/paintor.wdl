@@ -34,7 +34,7 @@ task preprocess {
 	}
 
 	output {
-		Array[File] ld_files = glob("Locus1.*")
+		Array[File] ld_files = glob("Locus1.LD.*")
 		File variant_list = "Locus1.markers.csv"
 		File annotation_out = "Locus1.annotations"
 		File assoc_out = "Locus1"
@@ -51,6 +51,7 @@ task runPaintor {
 	File zcol_names
 	File ld_names
 	File anno_names
+	Int max_causal
 
 	Int memory
 	Int disk
@@ -60,14 +61,16 @@ task runPaintor {
 	Array[String] anno = read_lines(anno_names)
 
 	command {
+		mv -t ./ ${annotation_out} ${assoc_out} ${sep = " " ld_files} && \
 		echo "Locus1" >> input.txt && \
 		PAINTOR -input input.txt \
 		-in . \
 		-out . \
 		-Zhead ${sep = ", " zcol} \
 		-LDname ${sep = ", " ld} \
-		-annotations ${sep = ", " anno}
-		-mcmc
+		-annotations ${sep = ", " anno} \
+		-mcmc \
+		-max_causal ${max_causal}
 	}
 
 	runtime {
@@ -98,6 +101,8 @@ task summary {
 	Array[String] anno = read_lines(anno_names)
 	# R --vanilla --args ${paintor_results} ${sep="," ld_files} ${annotation_out} ${assoc_out} ${sep="," zcol} ${sep="," ld} ${sep="," anno} < /fineMap/paintor/summary.R
 
+	# CANVIS.py -l output/Locus1.results -z ZSCORE.EU -a RunDirectory/Locus1.annotations -s 6_Weak_transcription 10_Active_enhancer_2 1_Active_TSS 2_Weak_TSS 9_Active_enhancer_1
+
 	command {
 		touch Locus1.plots.png
 	}
@@ -126,6 +131,7 @@ workflow group_assoc_wf {
 	Int? this_mac
 	String this_pval_col
 	String this_effect_col
+	Int this_max_causal
 
 	Int pre_memory
 	Int paintor_memory
@@ -144,7 +150,7 @@ workflow group_assoc_wf {
 		}
 
 		call runPaintor {
-			input: ld_files = preprocess.ld_files, annotation_out = preprocess.annotation_out, assoc_out = preprocess.assoc_out, zcol_names = preprocess.zcol_names, ld_names = preprocess.ld_names, anno_names = preprocess.anno_names, memory = paintor_memory, disk = this_disk
+			input: ld_files = preprocess.ld_files, annotation_out = preprocess.annotation_out, assoc_out = preprocess.assoc_out, zcol_names = preprocess.zcol_names, ld_names = preprocess.ld_names, anno_names = preprocess.anno_names, max_causal = this_max_causal, memory = paintor_memory, disk = this_disk
 		}
 
 		call summary {
