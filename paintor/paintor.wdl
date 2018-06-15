@@ -67,6 +67,7 @@ task runPaintor {
 		-Zhead ${sep = ", " zcol} \
 		-LDname ${sep = ", " ld} \
 		-annotations ${sep = ", " anno}
+		-mcmc
 	}
 
 	runtime {
