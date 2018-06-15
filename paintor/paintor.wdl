@@ -108,7 +108,7 @@ task summary {
 	}
 
 	runtime {
-		docker: "tmajarian/paintor:0.3"
+		docker: "tmajarian/paintor_canvas:0.1"
 		disks: "local-disk ${disk} SSD"
 		memory: "${memory}G"
 	}

@@ -1,0 +1,17 @@
+FROM python:2
+
+MAINTAINER tmajaria@broadinstitute.org
+
+RUN git clone https://github.com/gkichaev/PAINTOR_V3.0.git
+
+RUN cd /PAINTOR_V3.0 && \
+	bash install.sh && \
+	mv ./PAINTOR /bin && \
+	cd / && \
+	rm -rf PAINTOR_V3.0
+
+RUN cd / && \
+	git clone https://github.com/manning-lab/fineMap.git
+
+RUN pip install numpy scipy matplotlib seaborn pandas 
+RUN pip install svgutils --user
