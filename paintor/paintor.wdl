@@ -160,12 +160,10 @@ workflow group_assoc_wf {
 			input: ld_files = preprocess.ld_files, annotation_out = preprocess.annotation_out, assoc_out = preprocess.assoc_out, zcol_names = preprocess.zcol_names, ld_names = preprocess.ld_names, anno_names = preprocess.anno_names, max_causal = this_max_causal, memory = paintor_memory, disk = this_disk
 		}
 
-		Array[String] zcols = read_lines(zcol_names)
+		Array[String] zcols = read_lines(preprocess.zcol_names)
 
-		scatter(this_zcol in zcols) {
-			call summary {
-				input: paintor_results = runPaintor.results, zname = this_zcol, annotation_out = preprocess.annotation_out, anno_names = preprocess.anno_names, ld_files = preprocess.ld_files, memory = summary_memory, disk = this_disk
-			}
+		call summary {
+			input: paintor_results = runPaintor.results, zname = zcols[2], annotation_out = preprocess.annotation_out, anno_names = preprocess.anno_names, ld_files = preprocess.ld_files, memory = summary_memory, disk = this_disk
 		}
 	}
 }
