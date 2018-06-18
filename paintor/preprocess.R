@@ -117,7 +117,7 @@ markers <- na.omit(markers)
 # final assoc to save
 final <- markers[,c("chr","pos",zcol.names)]
 names(final)[1] <- "CHR"
-final <- final[order(finals$pos),]
+final <- final[order(final$pos),]
 ##
 
 ## This will process the annotation data
