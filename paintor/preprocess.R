@@ -166,6 +166,15 @@ for (gind in seq(1,length(sample.ids))){
   # save it
   write.table(ld, file = paste0("Locus1.",ld.names[gind]), row.names = F, col.names = F, sep = " ", quote = F)
 }
+
+# make general LD matrix
+all.sample.ids <- do.call(c, sample.ids)
+ld <- data.frame(snpgdsLDMat(gds.data, method = "corr", slide = 0, sample.id = all.sample.ids, snp.id = markers$variant.id)$LD)
+ld <- ld * ld
+
+# save it
+write.table(ld, file = "Locus1.all.LD", row.names = F, col.names = F, sep = " ", quote = F)
+
 ##
 
 # write out the markers

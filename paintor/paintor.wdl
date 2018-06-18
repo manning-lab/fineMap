@@ -35,6 +35,7 @@ task preprocess {
 
 	output {
 		Array[File] ld_files = glob("Locus1.LD.*")
+		File ld_avg = "Locus1.all.LD"
 		File variant_list = "Locus1.markers.csv"
 		File annotation_out = "Locus1.annotations"
 		File assoc_out = "Locus1"
@@ -90,7 +91,7 @@ task summary {
 	String zname
 	File annotation_out
 	File anno_names
-	Array[File] ld_files
+	File ld_avg
 
 	Int memory
 	Int disk
@@ -111,7 +112,8 @@ task summary {
 		-l ${paintor_results} \
 		-z ${zname} \
 		-a ${annotation_out} \
-		-s ${sep=" " anno_names}
+		-s ${sep=" " anno}
+		-r ${ld_avg}
 	}
 
 	runtime {
@@ -163,7 +165,7 @@ workflow group_assoc_wf {
 		Array[String] zcols = read_lines(preprocess.zcol_names)
 
 		call summary {
-			input: paintor_results = runPaintor.results, zname = zcols[2], annotation_out = preprocess.annotation_out, anno_names = preprocess.anno_names, ld_files = preprocess.ld_files, memory = summary_memory, disk = this_disk
+			input: paintor_results = runPaintor.results, zname = zcols[2], annotation_out = preprocess.annotation_out, anno_names = preprocess.anno_names, ld_avg = preprocess.ld_avg, memory = summary_memory, disk = this_disk
 		}
 	}
 }
