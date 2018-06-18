@@ -145,6 +145,7 @@ markers <- merge(markers, as.data.frame(markers.gr)[,c("seqnames", "start","ref"
 state.map <- data.frame(state = unique(anno.data[,4]))
 state.map$state.ind <- seq(1,nrow(state.map))
 markers <- merge(markers, state.map, by.x = "state", by.y = "state")
+markers <- markers[order(markers$pos),]
 
 # make matrix of 0s for 1 hot vecs
 anno.matrix <- matrix(data = 0, nrow = nrow(markers), ncol = nrow(state.map))
