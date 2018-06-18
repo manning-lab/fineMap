@@ -16,6 +16,7 @@ anno.cols <- unlist(strsplit(input_args[6],","))
 mac <- as.numeric(input_args[7])
 pval.col <- input_args[8]
 effect.col <- input_args[9]
+pval.thresh <- as.numeric(input_args[10])
 
 ## # these are from the DCC pipeline, credit -> S. Gogarten 
 .variantDF <- function(gds) {
@@ -85,27 +86,30 @@ seqSetFilter(gds.data, variant.id = var.union)
 # gather the data
 markers <- .expandAlleles(gds.data)[,c(1,2,3,4,5)]
 names(markers) <- c("variant.id","chr","pos","ref","alt")
-# chr.v <- seqGetData(gds.data, "chromosome")
-# pos <- seqGetData(gds.data, "position")
-# ref <- seqGetData(gds.data, "$ref")
-# alt <- seqGetData(gds.data, "$alt")
-
-# markers <- data.frame(cbind(chr.v, pos, ref, alt))
-# names(markers)[1] <- "chr"
 markers$marker <- paste(markers$chr, markers$pos, markers$ref, markers$alt, sep=":")
 ##
 
 ## Now get the zscores
+# Matrix to store flags for pvalues under threshold
+pval.flags <- data.frame(marker = markers$marker)
+
 # calculate z
 for (gind in seq(1,length(assoc.files))){
   c.assoc <- fread(assoc.files[gind], data.table = F, stringsAsFactors = F)[,c("chr","pos","ref","alt",pval.col,effect.col)]
   c.assoc$marker <- paste(c.assoc$chr, c.assoc$pos, c.assoc$ref, c.assoc$alt, sep = ":")
   c.assoc <- c.assoc[c.assoc$marker %in% markers$marker, ]
+  pval.flags <- merge(pval.flags, c.assoc[,c("marker","Score.pval")], by.x = "marker", by.y = "marker")
+  colnames(pval.flags)[gind+1] <- paste0("p.",gind)
   c.assoc$Z <- abs(qnorm(c.assoc[, pval.col]/2))*sign(c.assoc[,effect.col])
   c.assoc <- c.assoc[,c("marker","Z")]
   colnames(c.assoc) <- c("marker", zcol.names[gind])
   markers <- merge(markers, c.assoc, by.x = "marker", by.y = "marker", all.x = T)
 }
+
+row.names(pval.flags) <- pval.flags$marker
+pval.flags <- pval.flags[,names(pval.flags) != "marker"]
+pval.flags <- pval.flags < pval.thresh
+markers.tokeep <- row.names(pval.flags)[rowSums(pval.flags) > 0 ]
 
 # remove any rows with NAs
 markers <- na.omit(markers)
@@ -113,6 +117,7 @@ markers <- na.omit(markers)
 # final assoc to save
 final <- markers[,c("chr","pos",zcol.names)]
 names(final)[1] <- "CHR"
+final <- final[order(finals$pos),]
 ##
 
 ## This will process the annotation data
@@ -166,6 +171,10 @@ for (gind in seq(1,length(sample.ids))){
   
   # save it
   write.table(ld, file = paste0("Locus1.",ld.names[gind]), row.names = F, col.names = F, sep = " ", quote = F)
+  
+  # also save ld matrix for markers below pvalue threshold
+  ld <- ld[which(markers$marker %in% markers.tokeep),which(markers$marker %in% markers.tokeep)]
+  write.table(ld, file = paste0("pval.passed.Locus1.",ld.names[gind]), row.names = F, col.names = F, sep = " ", quote = F)
 }
 
 # make general LD matrix
@@ -180,12 +189,15 @@ write.table(ld, file = "Locus1.all.LD", row.names = F, col.names = F, sep = " ",
 
 # write out the markers
 write.table(markers[,c("pos","ref","alt","marker")], file = "Locus1.markers.csv", row.names = F, col.names = T, sep = ",", quote = F)
+write.table(markers[markers$marker %in% markers.tokeep,c("pos","ref","alt","marker")], file = "pval.passed.Locus1.markers.csv", row.names = F, col.names = T, sep = ",", quote = F)
 
 # save annotations
 write.table(anno.matrix, file="Locus1.annotations", quote=F, sep=" ", row.names=F, col.names = state.map$state)
+write.table(anno.matrix[which(markers$marker %in% markers.tokeep),], file="pval.passed.Locus1.annotations", quote=F, sep=" ", row.names=F, col.names = state.map$state)
 
 # save assoc file
 write.table(final, file="Locus1", sep=" ", row.names=F, quote=F)
+write.table(final[which(markers$marker %in% markers.tokeep)], file="pval.passed.Locus1", sep=" ", row.names=F, quote=F)
 
 # export col names for zscores
 write.table(zcol.names, file = "zcol.txt", row.names = F, col.names = F, sep = "\n", quote = F)

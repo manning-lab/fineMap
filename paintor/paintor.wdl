@@ -19,16 +19,17 @@ task preprocess {
 	Int? mac
 	String pval_col
 	String effect_col
+	Float? pval_thresh
 
 	Int memory
 	Int disk
 
 	command {
-		R --vanilla --args ${sep = ":" interval} ${gds_file} ${sep="," sample_ids} ${sep="," assoc_files} ${annotation_file} ${sep="," anno_cols} ${default="10" mac} ${pval_col} ${effect_col} < /fineMap/paintor/preprocess.R
+		R --vanilla --args ${sep = ":" interval} ${gds_file} ${sep="," sample_ids} ${sep="," assoc_files} ${annotation_file} ${sep="," anno_cols} ${default="10" mac} ${pval_col} ${effect_col} ${default="0.0005" pval_thresh} < /fineMap/paintor/preprocess.R
 	}
 
 	runtime {
-		docker: "tmajarian/paintor:0.3"
+		docker: "tmajarian/paintor:0.4"
 		disks: "local-disk ${disk} SSD"
 		memory: "${memory}G"
 	}
@@ -36,9 +37,13 @@ task preprocess {
 	output {
 		Array[File] ld_files = glob("Locus1.LD.*")
 		File ld_avg = "Locus1.all.LD"
+		Array[File] ld_passed = glob("pval.passed.Locus1.*")
 		File variant_list = "Locus1.markers.csv"
+		File variant_list_passed = "pval.passed.Locus1.markers.csv"
 		File annotation_out = "Locus1.annotations"
+		File annotation_out_passed = "pval.passed.Locus1.annotations"
 		File assoc_out = "Locus1"
+		File assoc_out_passed = "pval.passed.Locus1"
 		File zcol_names = "zcol.txt"
 		File ld_names = "ld.txt"
 		File anno_names = "anno.txt"
@@ -67,16 +72,16 @@ task runPaintor {
 		PAINTOR -input input.txt \
 		-in . \
 		-out . \
-		-Zhead ${sep = ", " zcol} \
-		-LDname ${sep = ", " ld} \
-		-annotations ${sep = ", " anno} \
-		-mcmc \
+		-Zhead ${sep = "," zcol} \
+		-LDname ${sep = "," ld} \
+		-annotations ${sep = "," anno} \
 		-max_causal ${max_causal} \
+		-mcmc \
 		-set_seed 1
 	}
 
 	runtime {
-		docker: "tmajarian/paintor:0.3"
+		docker: "tmajarian/paintor:0.4"
 		disks: "local-disk ${disk} SSD"
 		memory: "${memory}G"
 	}
@@ -112,7 +117,7 @@ task summary {
 		-l ${paintor_results} \
 		-z ${zname} \
 		-a ${annotation_out} \
-		-s ${sep=" " anno}
+		-s ${sep=" " anno} \
 		-r ${ld_avg}
 	}
 
@@ -123,7 +128,8 @@ task summary {
 	}
 	
 	output {
-		File plots = "Locus1.plots.png"
+		File html = "canvis.html"
+		File svg = "canvis.svg"
 	}
 
 }
@@ -141,6 +147,7 @@ workflow group_assoc_wf {
 	String this_pval_col
 	String this_effect_col
 	Int this_max_causal
+	Float? this_pval_thresh
 
 	Int pre_memory
 	Int paintor_memory
@@ -155,7 +162,7 @@ workflow group_assoc_wf {
 		Int this_chr_int = this_chr - 1
 
 		call preprocess {
-			input: interval = this_interval, gds_file = these_gds_files[this_chr_int], sample_ids = these_sample_ids, assoc_files = these_assoc_files, annotation_file = this_annotation_file, anno_cols = these_anno_cols, mac = this_mac, pval_col = this_pval_col, effect_col = this_effect_col, memory = pre_memory, disk = this_disk
+			input: interval = this_interval, gds_file = these_gds_files[this_chr_int], sample_ids = these_sample_ids, assoc_files = these_assoc_files, annotation_file = this_annotation_file, anno_cols = these_anno_cols, mac = this_mac, pval_col = this_pval_col, effect_col = this_effect_col, pval_thresh = this_pval_thresh, memory = pre_memory, disk = this_disk
 		}
 
 		call runPaintor {
