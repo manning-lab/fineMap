@@ -197,7 +197,7 @@ write.table(anno.matrix[which(markers$marker %in% markers.tokeep),], file="pval.
 
 # save assoc file
 write.table(final, file="Locus1", sep=" ", row.names=F, quote=F)
-write.table(final[which(markers$marker %in% markers.tokeep)], file="pval.passed.Locus1", sep=" ", row.names=F, quote=F)
+write.table(final[which(markers$marker %in% markers.tokeep),], file="pval.passed.Locus1", sep=" ", row.names=F, quote=F)
 
 # export col names for zscores
 write.table(zcol.names, file = "zcol.txt", row.names = F, col.names = F, sep = "\n", quote = F)
