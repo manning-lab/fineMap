@@ -70,7 +70,8 @@ task runPaintor {
 		-LDname ${sep = ", " ld} \
 		-annotations ${sep = ", " anno} \
 		-mcmc \
-		-max_causal ${max_causal}
+		-max_causal ${max_causal} \
+		-set_seed 1
 	}
 
 	runtime {
@@ -86,29 +87,35 @@ task runPaintor {
 
 task summary {
 	File paintor_results
-	Array[File] ld_files
+	String zname
 	File annotation_out
-	File assoc_out
-	File zcol_names
-	File ld_names
 	File anno_names
+	Array[File] ld_files
 
 	Int memory
 	Int disk
 
-	Array[String] zcol = read_lines(zcol_names)
-	Array[String] ld = read_lines(ld_names)
 	Array[String] anno = read_lines(anno_names)
-	# R --vanilla --args ${paintor_results} ${sep="," ld_files} ${annotation_out} ${assoc_out} ${sep="," zcol} ${sep="," ld} ${sep="," anno} < /fineMap/paintor/summary.R
 
-	# CANVIS.py -l output/Locus1.results -z ZSCORE.EU -a RunDirectory/Locus1.annotations -s 6_Weak_transcription 10_Active_enhancer_2 1_Active_TSS 2_Weak_TSS 9_Active_enhancer_1
+#	python CANVIS.py\
+#-l chr4.3473139.rs6831256.post.filt.300\
+#-z tg.Zscore\
+#-r chr4.3473139.rs6831256.ld.filt.300\
+#-a chr4.3473139.rs6831256.annot.filt.300\
+#-s E066.H3K27ac.narrowPeak.Adult_Liver E066.H3K4me1.narrowPeak.Adult_Liver\
+#-t 99 \
+#-i 3381705 3507346
 
 	command {
-		touch Locus1.plots.png
+		python /fineMap/paintor/CANVIS.py \
+		-l ${paintor_results} \
+		-z ${zname} \
+		-a ${annotation_out} \
+		-s ${sep=" " anno_names}
 	}
 
 	runtime {
-		docker: "tmajarian/paintor_canvas:0.1"
+		docker: "tmajarian/paintor_canvas:0.2"
 		disks: "local-disk ${disk} SSD"
 		memory: "${memory}G"
 	}
@@ -153,8 +160,12 @@ workflow group_assoc_wf {
 			input: ld_files = preprocess.ld_files, annotation_out = preprocess.annotation_out, assoc_out = preprocess.assoc_out, zcol_names = preprocess.zcol_names, ld_names = preprocess.ld_names, anno_names = preprocess.anno_names, max_causal = this_max_causal, memory = paintor_memory, disk = this_disk
 		}
 
-		call summary {
-			input: paintor_results = runPaintor.results, ld_files = preprocess.ld_files, annotation_out = preprocess.annotation_out, assoc_out = preprocess.assoc_out, zcol_names = preprocess.zcol_names, ld_names = preprocess.ld_names, anno_names = preprocess.anno_names, memory = summary_memory, disk = this_disk
+		Array[String] zcols = read_lines(zcol_names)
+
+		scatter(this_zcol in zcols) {
+			call summary {
+				input: paintor_results = runPaintor.results, zname = this_zcol, annotation_out = preprocess.annotation_out, anno_names = preprocess.anno_names, ld_files = preprocess.ld_files, memory = summary_memory, disk = this_disk
+			}
 		}
 	}
 }
