@@ -1,13 +1,4 @@
 ## paintor wdl
-### preprocess 
-# identify shared variants = 6.11.18
-# LD calculation
-# prepare assoc results = association file script (add alt ref)
-# prepare annotation file = annotations.r
-# output zcol names
-# output ld names
-# output annotation names
-
 
 task preprocess {
 	Array[String] interval
@@ -29,7 +20,7 @@ task preprocess {
 	}
 
 	runtime {
-		docker: "tmajarian/paintor:0.4"
+		docker: "manninglab/finemap:paintor.v.3.0"
 		disks: "local-disk ${disk} SSD"
 		memory: "${memory}G"
 	}
@@ -80,7 +71,7 @@ task runPaintor {
 	}
 
 	runtime {
-		docker: "tmajarian/paintor:0.4"
+		docker: "manninglab/finemap:paintor.v.3.0"
 		disks: "local-disk ${disk} SSD"
 		memory: "${memory}G"
 	}
@@ -102,15 +93,6 @@ task summary {
 
 	Array[String] anno = read_lines(anno_names)
 
-#	python CANVIS.py\
-#-l chr4.3473139.rs6831256.post.filt.300\
-#-z tg.Zscore\
-#-r chr4.3473139.rs6831256.ld.filt.300\
-#-a chr4.3473139.rs6831256.annot.filt.300\
-#-s E066.H3K27ac.narrowPeak.Adult_Liver E066.H3K4me1.narrowPeak.Adult_Liver\
-#-t 99 \
-#-i 3381705 3507346
-
 	command {
 		python /fineMap/paintor/CANVIS.py \
 		-l ${paintor_results} \
@@ -121,7 +103,7 @@ task summary {
 	}
 
 	runtime {
-		docker: "tmajarian/paintor_canvas:0.2"
+		docker: "manninglab/finemap:paintor.canvis"
 		disks: "local-disk ${disk} SSD"
 		memory: "${memory}G"
 	}
