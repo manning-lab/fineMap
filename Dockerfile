@@ -4,7 +4,7 @@ MAINTAINER tmajaria@broadinstitute.org
 
 RUN apt-get update && apt-get -y install build-essential libcurl4-openssl-dev git
 
-RUN git clone https://github.com/gkichaev/PAINTOR_V3.0.git
+RUN git clone --branch 3.0 https://github.com/gkichaev/PAINTOR_V3.0.git
 
 RUN cd /PAINTOR_V3.0 && \
 	bash install.sh && \
@@ -22,5 +22,5 @@ RUN echo "install.packages(c('data.table','dplyr','tidyr'), repos='http://cran.u
 
 RUN cd / && \
 	git clone https://github.com/manning-lab/fineMap.git && \
-	ls && \
-	ls
+	ls -lt && \
+	ls -ltr

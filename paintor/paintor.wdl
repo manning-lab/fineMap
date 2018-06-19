@@ -76,7 +76,6 @@ task runPaintor {
 		-LDname ${sep = "," ld} \
 		-annotations ${sep = "," anno} \
 		-max_causal ${max_causal} \
-		-mcmc \
 		-set_seed 1
 	}
 
