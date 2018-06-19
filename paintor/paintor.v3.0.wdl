@@ -99,7 +99,8 @@ task summary {
 		-z ${zname} \
 		-a ${annotation_out} \
 		-s ${sep=" " anno} \
-		-r ${ld_avg}
+		-r ${ld_avg} \
+		-t 99
 	}
 
 	runtime {
