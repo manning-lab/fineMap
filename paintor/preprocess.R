@@ -43,6 +43,9 @@ chr <- interval[1]
 start <- as.numeric(as.character(interval[2]))
 end <- as.numeric(as.character(interval[3]))
 
+# create output prefix
+out.pref <- paste(chr, start, end, sep = ":")
+
 # Load sample ids
 sample.ids <- lapply(sample.ids.files, function(x) fread(x, data.table = F, stringsAsFactors = F, header = F)$V1)
 
@@ -108,15 +111,24 @@ for (gind in seq(1,length(assoc.files))){
 
 row.names(pval.flags) <- pval.flags$marker
 pval.flags <- pval.flags[,names(pval.flags) != "marker"]
-pval.flags <- pval.flags < pval.thresh
-markers.tokeep <- row.names(pval.flags)[rowSums(pval.flags) > 0 ]
+pval.flags.tf <- pval.flags < pval.thresh
+markers.tokeep <- row.names(pval.flags.tf)[rowSums(pval.flags.tf) > 0 ]
+# pval.flags <- pval.flags[row.names(pval.flags) %in% markers.tokeep,]
 
 # remove any rows with NAs
 markers <- na.omit(markers)
 
 # final assoc to save
-final <- markers[,c("chr","pos",zcol.names)]
-names(final)[1] <- "CHR"
+final <- markers[,c("marker","chr","pos",zcol.names)]
+names(final)[2] <- "CHR"
+
+# add meta p-value to final output
+library(metap)
+pval.flags$meta <- apply(pval.flags,1,function(x){keep <- !is.na(x) ;if(sum(keep)==0) {return(NA)} else if (sum(keep)==1){return(x[keep])}; logitp(x[keep])$p})
+pval.flags <- data.frame(marker = row.names(pval.flags), meta_p = pval.flags$meta)
+
+# merge back with final
+final <- merge(final, pval.flags[,c("marker","meta_p")], by.x = "marker", by.y = "marker", all.x = T)
 final <- final[order(final$pos),]
 ##
 
@@ -174,7 +186,7 @@ for (gind in seq(1,length(sample.ids))){
   
   # also save ld matrix for markers below pvalue threshold
   ld <- ld[which(markers$marker %in% markers.tokeep),which(markers$marker %in% markers.tokeep)]
-  write.table(ld, file = paste0("pval.passed.Locus1.",ld.names[gind]), row.names = F, col.names = F, sep = " ", quote = F)
+  write.table(ld, file = paste0("pval.passed",out.pref,".",ld.names[gind]), row.names = F, col.names = F, sep = " ", quote = F)
 }
 
 # make general LD matrix
@@ -183,21 +195,21 @@ ld <- data.frame(snpgdsLDMat(gds.data, method = "corr", slide = 0, sample.id = a
 ld <- ld * ld
 
 # save it
-write.table(ld, file = "Locus1.all.LD", row.names = F, col.names = F, sep = " ", quote = F)
+write.table(ld, file = paste0(out.pref,".all.LD"), row.names = F, col.names = F, sep = " ", quote = F)
 
 ##
 
 # write out the markers
-write.table(markers[,c("pos","ref","alt","marker")], file = "Locus1.markers.csv", row.names = F, col.names = T, sep = ",", quote = F)
-write.table(markers[markers$marker %in% markers.tokeep,c("pos","ref","alt","marker")], file = "pval.passed.Locus1.markers.csv", row.names = F, col.names = T, sep = ",", quote = F)
+write.table(markers[,c("pos","ref","alt","marker")], file = paste0(out.pref,".markers.csv"), row.names = F, col.names = T, sep = ",", quote = F)
+write.table(markers[markers$marker %in% markers.tokeep,c("pos","ref","alt","marker")], file = paste0("pval.passed.",out.pref,".markers.csv"), row.names = F, col.names = T, sep = ",", quote = F)
 
 # save annotations
-write.table(anno.matrix, file="Locus1.annotations", quote=F, sep=" ", row.names=F, col.names = state.map$state)
-write.table(anno.matrix[which(markers$marker %in% markers.tokeep),], file="pval.passed.Locus1.annotations", quote=F, sep=" ", row.names=F, col.names = state.map$state)
+write.table(anno.matrix, file=paste0(out.pref,".annotations"), quote=F, sep=" ", row.names=F, col.names = state.map$state)
+write.table(anno.matrix[which(markers$marker %in% markers.tokeep),], file=paste0("pval.passed.",out.pref,".annotations"), quote=F, sep=" ", row.names=F, col.names = state.map$state)
 
 # save assoc file
-write.table(final, file="Locus1", sep=" ", row.names=F, quote=F)
-write.table(final[which(markers$marker %in% markers.tokeep),], file="pval.passed.Locus1", sep=" ", row.names=F, quote=F)
+write.table(final, file=out.pref, sep=" ", row.names=F, quote=F)
+write.table(final[which(markers$marker %in% markers.tokeep),], file=paste0("pval.passed.",out.pref), sep=" ", row.names=F, quote=F)
 
 # export col names for zscores
 write.table(zcol.names, file = "zcol.txt", row.names = F, col.names = F, sep = "\n", quote = F)

@@ -26,15 +26,15 @@ task preprocess {
 	}
 
 	output {
-		Array[File] ld_files = glob("Locus1.LD.*")
-		File ld_avg = "Locus1.all.LD"
-		Array[File] ld_passed = glob("pval.passed.Locus1.*")
-		File variant_list = "Locus1.markers.csv"
-		File variant_list_passed = "pval.passed.Locus1.markers.csv"
-		File annotation_out = "Locus1.annotations"
-		File annotation_out_passed = "pval.passed.Locus1.annotations"
-		File assoc_out = "Locus1"
-		File assoc_out_passed = "pval.passed.Locus1"
+		Array[File] ld_files = glob("${sep = ':' interval}.LD.*")
+		File ld_avg = "${sep = ':' interval}.all.LD"
+		Array[File] ld_passed = glob("pval.passed.${sep = ':' interval}.*")
+		File variant_list = "${sep = ':' interval}.markers.csv"
+		File variant_list_passed = "pval.passed.${sep = ':' interval}.markers.csv"
+		File annotation_out = "${sep = ':' interval}.annotations"
+		File annotation_out_passed = "pval.passed.${sep = ':' interval}.annotations"
+		File assoc_out = "${sep = ':' interval}"
+		File assoc_out_passed = "pval.passed.${sep = ':' interval}"
 		File zcol_names = "zcol.txt"
 		File ld_names = "ld.txt"
 		File anno_names = "anno.txt"
@@ -59,10 +59,12 @@ task runPaintor {
 
 	command {
 		mv -t ./ ${annotation_out} ${assoc_out} ${sep = " " ld_files} && \
-		echo "Locus1" >> input.txt && \
+		echo ${sep = ':' interval} >> input.txt && \
 		PAINTOR -input input.txt \
 		-in . \
 		-out . \
+		-Gname "${sep = ':' interval}.enrichment.estimate" \
+		-Lname "${sep = ':' interval}.log.bayesfactor" \
 		-Zhead ${sep = "," zcol} \
 		-LDname ${sep = "," ld} \
 		-annotations ${sep = "," anno} \
@@ -77,7 +79,9 @@ task runPaintor {
 	}
 	
 	output {
-		File results = "Locus1.results"
+		File results = "${sep = ':' interval}.results"
+		File enrichment = "${sep = ':' interval}.enrichment.estimate"
+		File bayes = "${sep = ':' interval}.enrichment.estimate"		
 	}
 }
 
@@ -96,7 +100,7 @@ task summary {
 	command {
 		python /fineMap/paintor/CANVIS.py \
 		-l ${paintor_results} \
-		-z ${zname} \
+		-z meta_p \
 		-a ${annotation_out} \
 		-s ${sep=" " anno} \
 		-r ${ld_avg} \
@@ -112,6 +116,7 @@ task summary {
 	output {
 		File html = "canvis.html"
 		File svg = "canvis.svg"
+		File colorbar = "colorbar.svg"
 	}
 
 }
@@ -151,10 +156,8 @@ workflow group_assoc_wf {
 			input: ld_files = preprocess.ld_files, annotation_out = preprocess.annotation_out, assoc_out = preprocess.assoc_out, zcol_names = preprocess.zcol_names, ld_names = preprocess.ld_names, anno_names = preprocess.anno_names, max_causal = this_max_causal, memory = paintor_memory, disk = this_disk
 		}
 
-		Array[String] zcols = read_lines(preprocess.zcol_names)
-
 		call summary {
-			input: paintor_results = runPaintor.results, zname = zcols[2], annotation_out = preprocess.annotation_out, anno_names = preprocess.anno_names, ld_avg = preprocess.ld_avg, memory = summary_memory, disk = this_disk
+			input: paintor_results = runPaintor.results, annotation_out = preprocess.annotation_out, anno_names = preprocess.anno_names, ld_avg = preprocess.ld_avg, memory = summary_memory, disk = this_disk
 		}
 	}
 }
