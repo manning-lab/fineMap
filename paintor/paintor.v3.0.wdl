@@ -20,7 +20,7 @@ task preprocess {
 	}
 
 	runtime {
-		docker: "manninglab/finemap:paintor.v.3.0"
+		docker: "manninglab/finemap:paintor.v3.0"
 		disks: "local-disk ${disk} SSD"
 		memory: "${memory}G"
 	}
@@ -71,7 +71,7 @@ task runPaintor {
 	}
 
 	runtime {
-		docker: "manninglab/finemap:paintor.v.3.0"
+		docker: "manninglab/finemap:paintor.v3.0"
 		disks: "local-disk ${disk} SSD"
 		memory: "${memory}G"
 	}
