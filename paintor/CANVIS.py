@@ -15,7 +15,7 @@ import math
 from optparse import OptionParser
 import svgutils.transform as sg
 import sys
-import cairosvg
+# import cairosvg
 import warnings
 import os
 
@@ -99,10 +99,12 @@ def Read_Input(locus_fname, zscore_names, ld_fnames, annotation_fname, specific_
 def Read_Input_top(locus_fname, zscore_names, ld_fnames, annotation_fname, specific_annotations, interval, top_locus_fname):
     """Function that reads in all your data files"""
     zscore_data = pd.read_csv(locus_fname, delim_whitespace=True)
-    top_data = pd.read_csv(locus_fname, delim_whitespace=True)
-    zscore_data = zscore_data[zscore_data['marker'] in top_data['marker'],]
+    top_data = pd.read_csv(top_locus_fname)
+    zscore_data = zscore_data[zscore_data['marker'].isin(list(top_data['marker']))].reset_index()
     zscores = zscore_data[zscore_names]
     location = zscore_data['pos']
+    
+
     pos_prob = zscore_data['Posterior_Prob']
 
     if interval is not None: # user input an interval
@@ -391,11 +393,11 @@ def Assemble_Figure(zscore_plots, value_plots, heatmaps, annotation_plot, output
         horizontal='y'
 
     if horizontal == 'y':
-        size_width = "9"
-        size_height = '9'
+        size_width = "9in"
+        size_height = '9in'
     else:
-        size_width = "5"
-        size_height = '11'
+        size_width = "5in"
+        size_height = '11in'
 
     fig = sg.SVGFigure(size_width, size_height)
     value_plots.savefig('value_plots.svg', format='svg', dpi=DPI, transparent=True)
@@ -479,19 +481,22 @@ def Assemble_Figure(zscore_plots, value_plots, heatmaps, annotation_plot, output
     fig.append(colorbar)
 
     #export final figure as a svg and pdf
-    svgfile = "canvis.svg"
+    # svgfile = "canvis.svg"
+    svgfile = output+".svg"
     fig.save(svgfile)
 
 
     #Uncomment if want to convert to PDF. Note: must have CarioSVG libraries installed
 
-    pdffile = output + ".pdf"
-    cairosvg.svg2pdf(url=svgfile, write_to=pdffile)
+    # pdffile = output + ".pdf"
+    # cairosvg.svg2pdf(url=svgfile, write_to=pdffile)
 
 
 
-    html_file = open("canvis.html",'w+')
-    html_str = """
+    # html_file = open("canvis.html",'w+')
+    html_file = open(output+".html",'w+')
+    html_str = '<img src="'+output+'.svg" >'
+    """
     <img src="canvis.svg" >
 
     """
@@ -504,6 +509,7 @@ def main():
     # Parse the command line data
     parser = OptionParser()
     parser.add_option("-l", "--locus_name", dest="locus_name")
+    parser.add_option("-T", "--top_locus_name", dest="top_locus_name", default="NA")
     parser.add_option("-z", "--zscores", dest="zscores", action='callback', callback=vararg_callback)
     parser.add_option("-a", "--annotations", dest="annotations")
     parser.add_option("-s", "--specific_annotations", dest="specific_annotations", action='callback', callback=vararg_callback)
@@ -519,6 +525,7 @@ def main():
     # extract options
     (options, args) = parser.parse_args()
     locus_name = options.locus_name
+    top_locus_name = options.top_locus_name
     zscore_names = options.zscores
     ld_name = options.ld_name
     annotations = options.annotations
@@ -556,8 +563,11 @@ def main():
     if(locus_name == None or zscore_names == None):
         sys.exit(usage)
 
-    [zscores, pos_prob, location, ld, annotations, annotation_names] = Read_Input(locus_name, zscore_names,
-                                                                                  ld_name, annotations, annotation_names, interval)
+    if top_locus_name == "NA":
+        [zscores, pos_prob, location, ld, annotations, annotation_names] = Read_Input(locus_name, zscore_names, ld_name, annotations, annotation_names, interval)
+    else:
+        [zscores, pos_prob, location, ld, annotations, annotation_names] = Read_Input_top(locus_name, zscore_names, ld_name, annotations, annotation_names, interval, top_locus_name)
+
     zscore_plots = Plot_Statistic_Value(location, zscores, zscore_names, greyscale, ld, pval)
     value_plots = Plot_Position_Value(location, pos_prob, threshold, greyscale)
 

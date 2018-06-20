@@ -24,7 +24,7 @@ task preprocess {
 	}
 
 	runtime {
-		docker: "tmajarian/finemap:paintor.v3.0"
+		docker: "manninglab/finemap:paintor.v3.0"
 		disks: "local-disk ${disk} SSD"
 		memory: "${memory}G"
 	}
@@ -79,7 +79,7 @@ task runPaintor {
 	}
 
 	runtime {
-		docker: "tmajarian/finemap:paintor.v3.0"
+		docker: "manninglab/finemap:paintor.v3.0"
 		disks: "local-disk ${disk} SSD"
 		memory: "${memory}G"
 	}
@@ -113,19 +113,19 @@ task summary {
 		-r ${ld_avg} \
 		-o ${interval} \
 		-t 99 \
-		-p
+		-p \
+		-L y
 	}
 
 	runtime {
-		docker: "tmajarian/finemap:paintor.canvis"
+		docker: "manninglab/finemap:paintor.canvis"
 		disks: "local-disk ${disk} SSD"
 		memory: "${memory}G"
 	}
 	
 	output {
-		File html = "canvis.html"
-		File svg = "canvis.svg"
-		File colorbar = "colorbar.svg"
+		File html = "${interval}.html"
+		File svg = "${interval}.svg"
 	}
 
 }
@@ -138,7 +138,7 @@ task catResults {
 	}
 
 	runtime {
-		docker: "tmajarian/finemap:paintor.v3.0"
+		docker: "manninglab/finemap:paintor.v3.0"
 		disks: "local-disk 50 SSD"
 		memory: "5G"
 	}
@@ -188,7 +188,7 @@ workflow group_assoc_wf {
 		}
 
 		call summary {
-			input: paintor_results = runPaintor.results, annotation_out = preprocess.annotation_out, anno_names = preprocess.anno_names, ld_avg = preprocess.ld_avg, memory = summary_memory, disk = this_disk
+			input: interval_string = this_interval_pair.right, paintor_results = runPaintor.results, annotation_out = preprocess.annotation_out, anno_names = preprocess.anno_names, ld_avg = preprocess.ld_avg, memory = summary_memory, disk = this_disk
 		}
 	}
 

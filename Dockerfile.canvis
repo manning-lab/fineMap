@@ -17,6 +17,4 @@ RUN cd / && \
 	git clone https://github.com/manning-lab/fineMap.git && \
 	cd fineMap && \
 	git checkout name_outputs && \
-	git pull origin name_outputs && \
-	ls -ltr && \
-	ls
+	git pull origin name_outputs
