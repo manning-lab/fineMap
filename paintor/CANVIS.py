@@ -96,6 +96,65 @@ def Read_Input(locus_fname, zscore_names, ld_fnames, annotation_fname, specific_
 
     return [zscores,pos_prob,location, lds, annotations, specific_annotations]
 
+def Read_Input_top(locus_fname, zscore_names, ld_fnames, annotation_fname, specific_annotations, interval, top_locus_fname):
+    """Function that reads in all your data files"""
+    zscore_data = pd.read_csv(locus_fname, delim_whitespace=True)
+    top_data = pd.read_csv(locus_fname, delim_whitespace=True)
+    zscore_data = zscore_data[zscore_data['marker'] in top_data['marker'],]
+    zscores = zscore_data[zscore_names]
+    location = zscore_data['pos']
+    pos_prob = zscore_data['Posterior_Prob']
+
+    if interval is not None: # user input an interval
+        a = int(interval[0])
+        b = int(interval[1])
+    elif interval is None:  # user did not input an interval; set interval to whole interval
+        a = np.amin(location)
+        b = np.amax(location)
+    if a < location[0] or a > location[len(location)-1]:
+        # user input out of range interval; set interval to whole interval
+        warnings.warn('Specified interval is out of range; left bound set to first valid location')
+        a = np.amin(location)
+    if b > location[len(location) - 1] or b < location[0]:
+        warnings.warn('Specified interval is out of range; right bound set to last valid location')
+        b = np.amax(location)
+
+    indices = np.where((location >= a) & (location <= b))
+    N = indices[0][0]
+    M = indices[-1][-1]
+    lds = []
+    if ld_fnames is not None:
+        for ld_fname in ld_fnames:
+            ld = pd.read_csv(ld_fname, header=None, delim_whitespace=True)
+            ld_matrix = ld.as_matrix()
+            # calculate index for location form location
+            ld_matrix = ld_matrix[N:M, N:M]
+            ld = pd.DataFrame(data=ld_matrix)
+            lds.append(ld)
+    else:
+        lds = None
+    if annotation_fname is not None:
+        annotation_data = pd.read_csv(annotation_fname, delim_whitespace=True)
+        if specific_annotations is not None:
+            annotations = annotation_data[specific_annotations]
+        else: # only data; no names
+            header = pd.read_csv(annotation_fname, delim_whitespace=True, header=None)
+            header = header.values.tolist()
+            specific_annotations = header[0]
+            annotations = annotation_data[specific_annotations]
+        annotations = annotations.as_matrix()
+        annotations = annotations[N:M]
+    else: # no data or names
+        annotations = None
+    zscores = zscores.as_matrix()
+    zscores = zscores[N:M, :]
+    pos_prob = pos_prob.as_matrix()
+    pos_prob = pos_prob[N:M]
+    location = location.as_matrix()
+    location = location[N:M]
+
+    return [zscores,pos_prob,location, lds, annotations, specific_annotations]
+
 def Zscore_to_Pvalue(zscore):
     """Function that converts zscores to pvalues"""
     abs_zscore = np.absolute(zscore)
@@ -332,11 +391,11 @@ def Assemble_Figure(zscore_plots, value_plots, heatmaps, annotation_plot, output
         horizontal='y'
 
     if horizontal == 'y':
-        size_width = "9in"
-        size_height = '9in'
+        size_width = "9"
+        size_height = '9'
     else:
-        size_width = "5in"
-        size_height = '11in'
+        size_width = "5"
+        size_height = '11'
 
     fig = sg.SVGFigure(size_width, size_height)
     value_plots.savefig('value_plots.svg', format='svg', dpi=DPI, transparent=True)
