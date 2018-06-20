@@ -104,12 +104,15 @@ def Zscore_to_Pvalue(zscore):
 
 # Find the top SNP and return the vector of SNPs relative to it
 
-def Find_Top_SNP(zscore_vect, correlation_matrix):
+def Find_Top_SNP(zscore_vect, correlation_matrix, pval):
     correlation_matrix = correlation_matrix.as_matrix()
     # use r^2
     correlation_matrix = np.square(correlation_matrix)
     zscore_vect = np.absolute(zscore_vect)
-    top_SNP = zscore_vect.argmax() # returns index
+    if pval:
+        top_SNP = zscore_vect.argmin()
+    else:
+        top_SNP = zscore_vect.argmax() # returns index
     # get column corresponding to top SNP
     top_vect = correlation_matrix[:][top_SNP]
     return top_vect, top_SNP
@@ -421,12 +424,12 @@ def Assemble_Figure(zscore_plots, value_plots, heatmaps, annotation_plot, output
     fig.save(svgfile)
 
 
-    """ Uncomment if want to convert to PDF. Note: must have CarioSVG libraries installed
+    #Uncomment if want to convert to PDF. Note: must have CarioSVG libraries installed
 
     pdffile = output + ".pdf"
     cairosvg.svg2pdf(url=svgfile, write_to=pdffile)
 
-    """
+
 
     html_file = open("canvis.html",'w+')
     html_str = """

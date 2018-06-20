@@ -3,7 +3,6 @@ library(data.table)
 # Parse inputs
 input_args <- commandArgs(trailingOnly=T)
 all.results <- unlist(strsplit(input_args[1], ","))
-posterior.threshold <- as.numeric(input_args[2])
 
 all.intervals <- lapply(all.results, function(x) sub(".results","",basename(x)))
 
@@ -16,7 +15,6 @@ for (find in seq(1,length(all.results))){
 
 all.results <- do.call(rbind, all.list)
 
-all.results <- all.results[all.results$Posterior_Prob > posterior.threshold,]
+all.results <- all.results[all.results$Posterior_Prob > 0.5,]
 
-fwrite(all.results, file = paste0("all.variants.posterior.", posterior.threshold, 
-	".csv"), sep = ",")
+fwrite(all.results, file = "top.variants.csv"), sep = ",")

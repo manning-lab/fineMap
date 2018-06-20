@@ -92,6 +92,7 @@ task runPaintor {
 }
 
 task summary {
+	String interval_string
 	File paintor_results
 	File annotation_out
 	File anno_names
@@ -101,6 +102,7 @@ task summary {
 	Int disk
 
 	Array[String] anno = read_lines(anno_names)
+	String interval = sub(interval_string, "\t", ".")
 
 	command {
 		python /fineMap/paintor/CANVIS.py \
@@ -109,6 +111,7 @@ task summary {
 		-a ${annotation_out} \
 		-s ${sep=" " anno} \
 		-r ${ld_avg} \
+		-o ${interval} \
 		-t 99 \
 		-p
 	}
@@ -129,10 +132,9 @@ task summary {
 
 task catResults {
 	Array[File] all_results
-	Float? posterior_threshold
 
 	command {
-		R --vanilla --args ${sep="," all_results} ${default="0.5" posterior_threshold} < /fineMap/paintor/catResults.R
+		R --vanilla --args ${sep="," all_results} < /fineMap/paintor/catResults.R
 	}
 
 	runtime {
@@ -142,7 +144,7 @@ task catResults {
 	}
 
 	output {
-		File cat_results = "all.variants.posterior.${posterior_threshold}.csv"
+		File cat_results = "top.variants.csv"
 	}
 
 }
@@ -161,7 +163,6 @@ workflow group_assoc_wf {
 	String this_effect_col
 	Int this_max_causal
 	Float? this_pval_thresh
-	Float? this_posterior_threshold
 
 	Int pre_memory
 	Int paintor_memory
@@ -192,6 +193,6 @@ workflow group_assoc_wf {
 	}
 
 	call catResults {
-		input: all_results = runPaintor.results, posterior_threshold = this_posterior_threshold
+		input: all_results = runPaintor.results
 	}
 }
