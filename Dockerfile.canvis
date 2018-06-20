@@ -10,7 +10,7 @@ RUN cd /PAINTOR_V3.0 && \
 	cd / && \
 	rm -rf PAINTOR_V3.0
 
-RUN pip install numpy scipy matplotlib seaborn pandas 
+RUN pip install numpy scipy matplotlib seaborn pandas cairosvg
 RUN pip install svgutils --user
 
 RUN cd / && \

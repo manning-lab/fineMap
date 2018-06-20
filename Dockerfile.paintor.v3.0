@@ -26,4 +26,4 @@ RUN cd / && \
 	git checkout name_outputs && \
 	git pull origin name_outputs && \
 	ls -ltr && \
-	ls -lt
+	ls -ltr

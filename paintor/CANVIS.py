@@ -139,13 +139,13 @@ def Plot_Statistic_Value(position, zscore, zscore_names, greyscale, lds, pval):
         if lds is not None:
             if i < len(lds): # exists a corresponding LD
                 correlation_matrix = lds[i]
-                [top_vect, top_SNP] = Find_Top_SNP(z, correlation_matrix)
+                [top_vect, top_SNP] = Find_Top_SNP(z, correlation_matrix, pval)
 
             else: # no corresponding LD, so use previously calculated one
                 # warnings.warn("Warning: no corresponding LD matrix for zscore. Plot is made using previous LD matrix.")
                 n = len(lds) - 1
                 correlation_matrix = lds[n]
-                [top_vect, top_SNP] = Find_Top_SNP(z, correlation_matrix)
+                [top_vect, top_SNP] = Find_Top_SNP(z, correlation_matrix, pval)
 
             if greyscale == 'y':
                 sub.scatter(position, pvalue, c=top_vect, cmap='Greys', zorder=1, clip_on=False)
@@ -426,8 +426,8 @@ def Assemble_Figure(zscore_plots, value_plots, heatmaps, annotation_plot, output
 
     #Uncomment if want to convert to PDF. Note: must have CarioSVG libraries installed
 
-    pdffile = output + ".pdf"
-    cairosvg.svg2pdf(url=svgfile, write_to=pdffile)
+    # pdffile = output + ".pdf"
+    # cairosvg.svg2pdf(url=svgfile, write_to=pdffile)
 
 
 
