@@ -15,7 +15,7 @@ import math
 from optparse import OptionParser
 import svgutils.transform as sg
 import sys
-#import cairosvg
+# import cairosvg
 import warnings
 import os
 
@@ -96,6 +96,67 @@ def Read_Input(locus_fname, zscore_names, ld_fnames, annotation_fname, specific_
 
     return [zscores,pos_prob,location, lds, annotations, specific_annotations]
 
+def Read_Input_top(locus_fname, zscore_names, ld_fnames, annotation_fname, specific_annotations, interval, top_locus_fname):
+    """Function that reads in all your data files"""
+    zscore_data = pd.read_csv(locus_fname, delim_whitespace=True)
+    top_data = pd.read_csv(top_locus_fname)
+    zscore_data = zscore_data[zscore_data['marker'].isin(list(top_data['marker']))].reset_index()
+    zscores = zscore_data[zscore_names]
+    location = zscore_data['pos']
+    
+
+    pos_prob = zscore_data['Posterior_Prob']
+
+    if interval is not None: # user input an interval
+        a = int(interval[0])
+        b = int(interval[1])
+    elif interval is None:  # user did not input an interval; set interval to whole interval
+        a = np.amin(location)
+        b = np.amax(location)
+    if a < location[0] or a > location[len(location)-1]:
+        # user input out of range interval; set interval to whole interval
+        warnings.warn('Specified interval is out of range; left bound set to first valid location')
+        a = np.amin(location)
+    if b > location[len(location) - 1] or b < location[0]:
+        warnings.warn('Specified interval is out of range; right bound set to last valid location')
+        b = np.amax(location)
+
+    indices = np.where((location >= a) & (location <= b))
+    N = indices[0][0]
+    M = indices[-1][-1]
+    lds = []
+    if ld_fnames is not None:
+        for ld_fname in ld_fnames:
+            ld = pd.read_csv(ld_fname, header=None, delim_whitespace=True)
+            ld_matrix = ld.as_matrix()
+            # calculate index for location form location
+            ld_matrix = ld_matrix[N:M, N:M]
+            ld = pd.DataFrame(data=ld_matrix)
+            lds.append(ld)
+    else:
+        lds = None
+    if annotation_fname is not None:
+        annotation_data = pd.read_csv(annotation_fname, delim_whitespace=True)
+        if specific_annotations is not None:
+            annotations = annotation_data[specific_annotations]
+        else: # only data; no names
+            header = pd.read_csv(annotation_fname, delim_whitespace=True, header=None)
+            header = header.values.tolist()
+            specific_annotations = header[0]
+            annotations = annotation_data[specific_annotations]
+        annotations = annotations.as_matrix()
+        annotations = annotations[N:M]
+    else: # no data or names
+        annotations = None
+    zscores = zscores.as_matrix()
+    zscores = zscores[N:M, :]
+    pos_prob = pos_prob.as_matrix()
+    pos_prob = pos_prob[N:M]
+    location = location.as_matrix()
+    location = location[N:M]
+
+    return [zscores,pos_prob,location, lds, annotations, specific_annotations]
+
 def Zscore_to_Pvalue(zscore):
     """Function that converts zscores to pvalues"""
     abs_zscore = np.absolute(zscore)
@@ -104,19 +165,22 @@ def Zscore_to_Pvalue(zscore):
 
 # Find the top SNP and return the vector of SNPs relative to it
 
-def Find_Top_SNP(zscore_vect, correlation_matrix):
+def Find_Top_SNP(zscore_vect, correlation_matrix, pval):
     correlation_matrix = correlation_matrix.as_matrix()
     # use r^2
     correlation_matrix = np.square(correlation_matrix)
     zscore_vect = np.absolute(zscore_vect)
-    top_SNP = zscore_vect.argmax() # returns index
+    if pval:
+        top_SNP = zscore_vect.argmin()
+    else:
+        top_SNP = zscore_vect.argmax() # returns index
     # get column corresponding to top SNP
     top_vect = correlation_matrix[:][top_SNP]
     return top_vect, top_SNP
 
 # Zscores Plot
 
-def Plot_Statistic_Value(position, zscore, zscore_names, greyscale, lds):
+def Plot_Statistic_Value(position, zscore, zscore_names, greyscale, lds, pval):
     """function that plots pvalues from given zscores"""
 
     zscore_tuple = []
@@ -127,18 +191,22 @@ def Plot_Statistic_Value(position, zscore, zscore_names, greyscale, lds):
         plt.tick_params(axis='both', which='major', labelsize=10)
         plt.ylabel('-log10(pvalue)', fontsize=10)
         z = zscore[:, i]
-        pvalue = Zscore_to_Pvalue(z)
+
+        if pval:
+            pvalue = [-math.log(zv,10) for zv in z]
+        else:
+            pvalue = Zscore_to_Pvalue(z)
 
         if lds is not None:
             if i < len(lds): # exists a corresponding LD
                 correlation_matrix = lds[i]
-                [top_vect, top_SNP] = Find_Top_SNP(z, correlation_matrix)
+                [top_vect, top_SNP] = Find_Top_SNP(z, correlation_matrix, pval)
 
             else: # no corresponding LD, so use previously calculated one
                 # warnings.warn("Warning: no corresponding LD matrix for zscore. Plot is made using previous LD matrix.")
                 n = len(lds) - 1
                 correlation_matrix = lds[n]
-                [top_vect, top_SNP] = Find_Top_SNP(z, correlation_matrix)
+                [top_vect, top_SNP] = Find_Top_SNP(z, correlation_matrix, pval)
 
             if greyscale == 'y':
                 sub.scatter(position, pvalue, c=top_vect, cmap='Greys', zorder=1, clip_on=False)
@@ -413,19 +481,22 @@ def Assemble_Figure(zscore_plots, value_plots, heatmaps, annotation_plot, output
     fig.append(colorbar)
 
     #export final figure as a svg and pdf
-    svgfile = "canvis.svg"
+    # svgfile = "canvis.svg"
+    svgfile = output+".svg"
     fig.save(svgfile)
 
 
-    """ Uncomment if want to convert to PDF. Note: must have CarioSVG libraries installed
+    #Uncomment if want to convert to PDF. Note: must have CarioSVG libraries installed
 
-    pdffile = output + ".pdf"
-    cairosvg.svg2pdf(url=svgfile, write_to=pdffile)
+    # pdffile = output + ".pdf"
+    # cairosvg.svg2pdf(url=svgfile, write_to=pdffile)
 
+
+
+    # html_file = open("canvis.html",'w+')
+    html_file = open(output+".html",'w+')
+    html_str = '<img src="'+output+'.svg" >'
     """
-
-    html_file = open("canvis.html",'w+')
-    html_str = """
     <img src="canvis.svg" >
 
     """
@@ -438,6 +509,7 @@ def main():
     # Parse the command line data
     parser = OptionParser()
     parser.add_option("-l", "--locus_name", dest="locus_name")
+    parser.add_option("-T", "--top_locus_name", dest="top_locus_name", default="NA")
     parser.add_option("-z", "--zscores", dest="zscores", action='callback', callback=vararg_callback)
     parser.add_option("-a", "--annotations", dest="annotations")
     parser.add_option("-s", "--specific_annotations", dest="specific_annotations", action='callback', callback=vararg_callback)
@@ -448,10 +520,12 @@ def main():
     parser.add_option("-i", "--interval", dest="interval", nargs=2)
     parser.add_option("-L", "--large_ld", dest="large_ld", default='n')
     parser.add_option("-H", "--horizontal", dest="horizontal", default='n')
+    parser.add_option("-p", "--pval", action='store_true')
 
     # extract options
     (options, args) = parser.parse_args()
     locus_name = options.locus_name
+    top_locus_name = options.top_locus_name
     zscore_names = options.zscores
     ld_name = options.ld_name
     annotations = options.annotations
@@ -468,6 +542,7 @@ def main():
     interval = options.interval
     large_ld = options.large_ld
     horizontal = options.horizontal
+    pval = options.pval
 
     usage = \
     """ Need the following flags specified (*)
@@ -488,9 +563,12 @@ def main():
     if(locus_name == None or zscore_names == None):
         sys.exit(usage)
 
-    [zscores, pos_prob, location, ld, annotations, annotation_names] = Read_Input(locus_name, zscore_names,
-                                                                                  ld_name, annotations, annotation_names, interval)
-    zscore_plots = Plot_Statistic_Value(location, zscores, zscore_names, greyscale, ld)
+    if top_locus_name == "NA":
+        [zscores, pos_prob, location, ld, annotations, annotation_names] = Read_Input(locus_name, zscore_names, ld_name, annotations, annotation_names, interval)
+    else:
+        [zscores, pos_prob, location, ld, annotations, annotation_names] = Read_Input_top(locus_name, zscore_names, ld_name, annotations, annotation_names, interval, top_locus_name)
+
+    zscore_plots = Plot_Statistic_Value(location, zscores, zscore_names, greyscale, ld, pval)
     value_plots = Plot_Position_Value(location, pos_prob, threshold, greyscale)
 
     if ld is not None:

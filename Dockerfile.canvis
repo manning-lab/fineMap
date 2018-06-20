@@ -10,8 +10,11 @@ RUN cd /PAINTOR_V3.0 && \
 	cd / && \
 	rm -rf PAINTOR_V3.0
 
-RUN cd / && \
-	git clone https://github.com/manning-lab/fineMap.git
-
-RUN pip install numpy scipy matplotlib seaborn pandas 
+RUN pip install numpy scipy matplotlib seaborn pandas cairosvg==1.0.22
 RUN pip install svgutils --user
+
+RUN cd / && \
+	git clone https://github.com/manning-lab/fineMap.git && \
+	cd fineMap && \
+	git checkout name_outputs && \
+	git pull origin name_outputs
