@@ -109,7 +109,8 @@ task summary {
 		-a ${annotation_out} \
 		-s ${sep=" " anno} \
 		-r ${ld_avg} \
-		-t 99
+		-t 99 \
+		-p
 	}
 
 	runtime {

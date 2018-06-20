@@ -193,6 +193,7 @@ for (gind in seq(1,length(sample.ids))){
 all.sample.ids <- do.call(c, sample.ids)
 ld <- data.frame(snpgdsLDMat(gds.data, method = "corr", slide = 0, sample.id = all.sample.ids, snp.id = markers$variant.id)$LD)
 ld <- ld * ld
+d <- ld[which(markers$marker %in% markers.tokeep),which(markers$marker %in% markers.tokeep)]
 
 # save it
 write.table(ld, file = paste0(out.pref,".all.LD"), row.names = F, col.names = F, sep = " ", quote = F)
