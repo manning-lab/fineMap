@@ -20,7 +20,7 @@ task preprocess {
 
 	command {
 		echo ${interval}
-		R --vanilla --args ${sep=":" interval_array} ${gds_file} ${sep="," sample_ids} ${sep="," assoc_files} ${annotation_file} ${sep="," anno_cols} ${default="10" mac} ${pval_col} ${effect_col} ${default="0.0005" pval_thresh} < /fineMap/paintor/preprocess.R
+		R --vanilla --args ${sep=":" interval_array} ${gds_file} ${sep="," sample_ids} ${sep="," assoc_files} ${annotation_file} ${sep="," anno_cols} ${default="10" mac} ${pval_col} ${effect_col} ${default="0.01" pval_thresh} < /fineMap/paintor/preprocess.R
 	}
 
 	runtime {
@@ -46,7 +46,8 @@ task preprocess {
 }
 
 task runPaintor {
-	String interval
+	String interval_string
+	String interval = sub(interval_string, "\t", ".")
 	Array[File] ld_files
 	File annotation_out
 	File assoc_out
@@ -125,6 +126,26 @@ task summary {
 
 }
 
+task catResults {
+	Array[File] all_results
+	Float? posterior_threshold
+
+	command {
+		R --vanilla --args ${sep="," all_results} ${default="0.5" posterior_threshold} < /fineMap/paintor/catResults.R
+	}
+
+	runtime {
+		docker: "tmajarian/finemap:paintor.v3.0"
+		disks: "local-disk 50 SSD"
+		memory: "5G"
+	}
+
+	output {
+		File cat_results = "all.variants.posterior.${posterior_threshold}.csv"
+	}
+
+}
+
 
 workflow group_assoc_wf {
 	
@@ -139,6 +160,7 @@ workflow group_assoc_wf {
 	String this_effect_col
 	Int this_max_causal
 	Float? this_pval_thresh
+	Float? this_posterior_threshold
 
 	Int pre_memory
 	Int paintor_memory
@@ -160,11 +182,15 @@ workflow group_assoc_wf {
 		}
 
 		call runPaintor {
-			input: interval = this_interval_pair.right, ld_files = preprocess.ld_files, annotation_out = preprocess.annotation_out, assoc_out = preprocess.assoc_out, zcol_names = preprocess.zcol_names, ld_names = preprocess.ld_names, anno_names = preprocess.anno_names, max_causal = this_max_causal, memory = paintor_memory, disk = this_disk
+			input: interval_string = this_interval_pair.right, ld_files = preprocess.ld_files, annotation_out = preprocess.annotation_out, assoc_out = preprocess.assoc_out, zcol_names = preprocess.zcol_names, ld_names = preprocess.ld_names, anno_names = preprocess.anno_names, max_causal = this_max_causal, memory = paintor_memory, disk = this_disk
 		}
 
 		call summary {
 			input: paintor_results = runPaintor.results, annotation_out = preprocess.annotation_out, anno_names = preprocess.anno_names, ld_avg = preprocess.ld_avg, memory = summary_memory, disk = this_disk
 		}
+	}
+
+	call catResults {
+		input: all_results = runPaintor.results, posterior_threshold = this_posterior_threshold
 	}
 }
