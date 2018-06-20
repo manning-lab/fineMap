@@ -116,7 +116,7 @@ def Find_Top_SNP(zscore_vect, correlation_matrix):
 
 # Zscores Plot
 
-def Plot_Statistic_Value(position, zscore, zscore_names, greyscale, lds):
+def Plot_Statistic_Value(position, zscore, zscore_names, greyscale, lds, pval):
     """function that plots pvalues from given zscores"""
 
     zscore_tuple = []
@@ -127,7 +127,11 @@ def Plot_Statistic_Value(position, zscore, zscore_names, greyscale, lds):
         plt.tick_params(axis='both', which='major', labelsize=10)
         plt.ylabel('-log10(pvalue)', fontsize=10)
         z = zscore[:, i]
-        pvalue = Zscore_to_Pvalue(z)
+
+        if pval:
+            pvalue = [-math.log(zv,10) for zv in z]
+        else:
+            pvalue = Zscore_to_Pvalue(z)
 
         if lds is not None:
             if i < len(lds): # exists a corresponding LD
@@ -448,6 +452,7 @@ def main():
     parser.add_option("-i", "--interval", dest="interval", nargs=2)
     parser.add_option("-L", "--large_ld", dest="large_ld", default='n')
     parser.add_option("-H", "--horizontal", dest="horizontal", default='n')
+    parser.add_option("-p", "--pval", action='store_true')
 
     # extract options
     (options, args) = parser.parse_args()
@@ -468,6 +473,7 @@ def main():
     interval = options.interval
     large_ld = options.large_ld
     horizontal = options.horizontal
+    pval = options.pval
 
     usage = \
     """ Need the following flags specified (*)
@@ -490,7 +496,7 @@ def main():
 
     [zscores, pos_prob, location, ld, annotations, annotation_names] = Read_Input(locus_name, zscore_names,
                                                                                   ld_name, annotations, annotation_names, interval)
-    zscore_plots = Plot_Statistic_Value(location, zscores, zscore_names, greyscale, ld)
+    zscore_plots = Plot_Statistic_Value(location, zscores, zscore_names, greyscale, ld, pval)
     value_plots = Plot_Position_Value(location, pos_prob, threshold, greyscale)
 
     if ld is not None:
