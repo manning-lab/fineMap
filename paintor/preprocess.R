@@ -182,7 +182,7 @@ for (gind in seq(1,length(sample.ids))){
   ld <- ld * ld
   
   # save it
-  write.table(ld, file = paste0("Locus1.",ld.names[gind]), row.names = F, col.names = F, sep = " ", quote = F)
+  write.table(ld, file = paste0(out.pref,".",ld.names[gind]), row.names = F, col.names = F, sep = " ", quote = F)
   
   # also save ld matrix for markers below pvalue threshold
   ld <- ld[which(markers$marker %in% markers.tokeep),which(markers$marker %in% markers.tokeep)]
