@@ -15,7 +15,7 @@ import math
 from optparse import OptionParser
 import svgutils.transform as sg
 import sys
-#import cairosvg
+import cairosvg
 import warnings
 import os
 
@@ -426,8 +426,8 @@ def Assemble_Figure(zscore_plots, value_plots, heatmaps, annotation_plot, output
 
     #Uncomment if want to convert to PDF. Note: must have CarioSVG libraries installed
 
-    # pdffile = output + ".pdf"
-    # cairosvg.svg2pdf(url=svgfile, write_to=pdffile)
+    pdffile = output + ".pdf"
+    cairosvg.svg2pdf(url=svgfile, write_to=pdffile)
 
 
 
