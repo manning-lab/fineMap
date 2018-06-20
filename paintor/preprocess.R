@@ -44,7 +44,7 @@ start <- as.numeric(as.character(interval[2]))
 end <- as.numeric(as.character(interval[3]))
 
 # create output prefix
-out.pref <- paste(chr, start, end, sep = ":")
+out.pref <- paste(chr, start, end, sep = ".")
 
 # Load sample ids
 sample.ids <- lapply(sample.ids.files, function(x) fread(x, data.table = F, stringsAsFactors = F, header = F)$V1)
@@ -186,7 +186,7 @@ for (gind in seq(1,length(sample.ids))){
   
   # also save ld matrix for markers below pvalue threshold
   ld <- ld[which(markers$marker %in% markers.tokeep),which(markers$marker %in% markers.tokeep)]
-  write.table(ld, file = paste0("pval.passed",out.pref,".",ld.names[gind]), row.names = F, col.names = F, sep = " ", quote = F)
+  write.table(ld, file = paste0("pval.passed.",out.pref,".",ld.names[gind]), row.names = F, col.names = F, sep = " ", quote = F)
 }
 
 # make general LD matrix

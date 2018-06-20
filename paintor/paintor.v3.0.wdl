@@ -1,7 +1,8 @@
 ## paintor wdl
 
 task preprocess {
-	Array[String] interval
+	Array[String] interval_array
+	String interval_string
 	File gds_file
 	Array[File] sample_ids
 	Array[File] assoc_files
@@ -15,26 +16,29 @@ task preprocess {
 	Int memory
 	Int disk
 
+	String interval = sub(interval_string, "\t", ".")
+
 	command {
-		R --vanilla --args ${sep = ":" interval} ${gds_file} ${sep="," sample_ids} ${sep="," assoc_files} ${annotation_file} ${sep="," anno_cols} ${default="10" mac} ${pval_col} ${effect_col} ${default="0.0005" pval_thresh} < /fineMap/paintor/preprocess.R
+		echo ${interval}
+		R --vanilla --args ${sep=":" interval_array} ${gds_file} ${sep="," sample_ids} ${sep="," assoc_files} ${annotation_file} ${sep="," anno_cols} ${default="10" mac} ${pval_col} ${effect_col} ${default="0.0005" pval_thresh} < /fineMap/paintor/preprocess.R
 	}
 
 	runtime {
-		docker: "manninglab/finemap:paintor.v3.0"
+		docker: "tmajarian/finemap:paintor.v3.0"
 		disks: "local-disk ${disk} SSD"
 		memory: "${memory}G"
 	}
 
 	output {
-		Array[File] ld_files = glob("${sep = ':' interval}.LD.*")
-		File ld_avg = "${sep = ':' interval}.all.LD"
-		Array[File] ld_passed = glob("pval.passed.${sep = ':' interval}.*")
-		File variant_list = "${sep = ':' interval}.markers.csv"
-		File variant_list_passed = "pval.passed.${sep = ':' interval}.markers.csv"
-		File annotation_out = "${sep = ':' interval}.annotations"
-		File annotation_out_passed = "pval.passed.${sep = ':' interval}.annotations"
-		File assoc_out = "${sep = ':' interval}"
-		File assoc_out_passed = "pval.passed.${sep = ':' interval}"
+		Array[File] ld_files = glob("${interval}.LD.*")
+		File ld_avg = "${interval}.all.LD"
+		Array[File] ld_passed = glob("pval.passed.${interval}.LD.*")
+		File variant_list = "${interval}.markers.csv"
+		File variant_list_passed = "pval.passed.${interval}.markers.csv"
+		File annotation_out = "${interval}.annotations"
+		File annotation_out_passed = "pval.passed.${interval}.annotations"
+		File assoc_out = "${interval}"
+		File assoc_out_passed = "pval.passed.${interval}"
 		File zcol_names = "zcol.txt"
 		File ld_names = "ld.txt"
 		File anno_names = "anno.txt"
@@ -42,6 +46,7 @@ task preprocess {
 }
 
 task runPaintor {
+	String interval
 	Array[File] ld_files
 	File annotation_out
 	File assoc_out
@@ -59,12 +64,12 @@ task runPaintor {
 
 	command {
 		mv -t ./ ${annotation_out} ${assoc_out} ${sep = " " ld_files} && \
-		echo ${sep = ':' interval} >> input.txt && \
+		echo ${interval} >> input.txt && \
 		PAINTOR -input input.txt \
 		-in . \
 		-out . \
-		-Gname "${sep = ':' interval}.enrichment.estimate" \
-		-Lname "${sep = ':' interval}.log.bayesfactor" \
+		-Gname "${interval}.enrichment.estimate" \
+		-Lname "${interval}.log.bayesfactor" \
 		-Zhead ${sep = "," zcol} \
 		-LDname ${sep = "," ld} \
 		-annotations ${sep = "," anno} \
@@ -73,21 +78,20 @@ task runPaintor {
 	}
 
 	runtime {
-		docker: "manninglab/finemap:paintor.v3.0"
+		docker: "tmajarian/finemap:paintor.v3.0"
 		disks: "local-disk ${disk} SSD"
 		memory: "${memory}G"
 	}
 	
 	output {
-		File results = "${sep = ':' interval}.results"
-		File enrichment = "${sep = ':' interval}.enrichment.estimate"
-		File bayes = "${sep = ':' interval}.enrichment.estimate"		
+		File results = "${interval}.results"
+		File enrichment = "${interval}.enrichment.estimate"
+		File bayes = "${interval}.enrichment.estimate"		
 	}
 }
 
 task summary {
 	File paintor_results
-	String zname
 	File annotation_out
 	File anno_names
 	File ld_avg
@@ -108,7 +112,7 @@ task summary {
 	}
 
 	runtime {
-		docker: "manninglab/finemap:paintor.canvis"
+		docker: "tmajarian/finemap:paintor.canvis"
 		disks: "local-disk ${disk} SSD"
 		memory: "${memory}G"
 	}
@@ -142,18 +146,21 @@ workflow group_assoc_wf {
 	Int this_disk
 
 	Array[Array[String]] these_intervals = read_tsv(this_interval_file)
+	Array[String] these_interval_lines = read_lines(this_interval_file)
 
-	scatter( this_interval in these_intervals ) {
+	Array[Pair[Array[String],String]] these_interval_pairs = zip(these_intervals, these_interval_lines)
 
-		Int this_chr = sub(this_interval[0], "chr", "")
+	scatter( this_interval_pair in these_interval_pairs ) {
+
+		Int this_chr = sub(this_interval_pair.left[0], "chr", "")
 		Int this_chr_int = this_chr - 1
 
 		call preprocess {
-			input: interval = this_interval, gds_file = these_gds_files[this_chr_int], sample_ids = these_sample_ids, assoc_files = these_assoc_files, annotation_file = this_annotation_file, anno_cols = these_anno_cols, mac = this_mac, pval_col = this_pval_col, effect_col = this_effect_col, pval_thresh = this_pval_thresh, memory = pre_memory, disk = this_disk
+			input: interval_array = this_interval_pair.left, interval_string = this_interval_pair.right, gds_file = these_gds_files[this_chr_int], sample_ids = these_sample_ids, assoc_files = these_assoc_files, annotation_file = this_annotation_file, anno_cols = these_anno_cols, mac = this_mac, pval_col = this_pval_col, effect_col = this_effect_col, pval_thresh = this_pval_thresh, memory = pre_memory, disk = this_disk
 		}
 
 		call runPaintor {
-			input: ld_files = preprocess.ld_files, annotation_out = preprocess.annotation_out, assoc_out = preprocess.assoc_out, zcol_names = preprocess.zcol_names, ld_names = preprocess.ld_names, anno_names = preprocess.anno_names, max_causal = this_max_causal, memory = paintor_memory, disk = this_disk
+			input: interval = this_interval_pair.right, ld_files = preprocess.ld_files, annotation_out = preprocess.annotation_out, assoc_out = preprocess.assoc_out, zcol_names = preprocess.zcol_names, ld_names = preprocess.ld_names, anno_names = preprocess.anno_names, max_causal = this_max_causal, memory = paintor_memory, disk = this_disk
 		}
 
 		call summary {
