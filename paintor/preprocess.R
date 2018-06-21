@@ -7,6 +7,8 @@ lapply(packages, library, character.only = TRUE)
 
 # Parse inputs
 input_args <- commandArgs(trailingOnly=T)
+print(input_args)
+
 interval <- unlist(strsplit(input_args[1], ":"))
 gds.file <- input_args[2]
 sample.ids.files <- unlist(strsplit(input_args[3],","))
@@ -42,15 +44,21 @@ pval.thresh <- as.numeric(input_args[10])
 chr <- interval[1]
 start <- as.numeric(as.character(interval[2]))
 end <- as.numeric(as.character(interval[3]))
+print(chr)
+print(start)
+print(end)
 
 # create output prefix
 out.pref <- paste(chr, start, end, sep = ".")
+print(out.pref)
 
 # Load sample ids
 sample.ids <- lapply(sample.ids.files, function(x) fread(x, data.table = F, stringsAsFactors = F, header = F)$V1)
-
+print(names(sample.ids))
+                     
 # make the output names for zcol and ld
 names.suf <- as.character(seq(1,length(sample.ids)))
+                     
 zcol.names <- paste("ZSCORE", names.suf, sep = ".")
 ld.names <- paste("LD", names.suf, sep = ".")
 
