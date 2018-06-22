@@ -170,6 +170,7 @@ markers.gr <- GRanges(seqnames = markers$chr, ranges = IRanges(start = as.numeri
 markers.ovp <- findOverlaps(markers.gr, anno.data.gr)
 
 # now get the right states for each variant
+markers.ovp <- markers.ovp[unique(queryHits(markers.ovp)),]
 markers.gr$state <- anno.data.gr[subjectHits(markers.ovp),]$state
 
 # back to data frame
