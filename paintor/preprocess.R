@@ -65,6 +65,15 @@ ld.names <- paste("LD", names.suf, sep = ".")
 # open gds files
 gds.data <- seqOpen(gds.file)
 
+# make sure that interval and gds have the same chr format
+gds.chr <- unique(seqGetData(gds.data,"chromosome"))[1]
+
+if (startsWith(gds.chr,"chr") && !(startsWith(chr, "chr"))){
+  chr <- sub("^","chr",chr)
+} else if (!(startsWith(gds.chr,"chr")) && startsWith(chr, "chr")){
+  chr <- sub("chr","",chr)
+}
+
 ## This is to get the list of common variants among all groups ##
 # list for variant ids
 var.ids <- list()
