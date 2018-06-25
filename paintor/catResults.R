@@ -17,4 +17,4 @@ all.results <- do.call(rbind, all.list)
 
 all.results <- all.results[all.results$Posterior_Prob > 0.5,]
 
-fwrite(all.results, file = "top.variants.csv"), sep = ",")
+fwrite(all.results, file = "top.variants.csv", sep = ",")
