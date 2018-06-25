@@ -129,7 +129,13 @@ for (gind in seq(1,length(assoc.files))){
 }
 
 row.names(pval.flags) <- pval.flags$marker
-pval.flags <- pval.flags[,names(pval.flags) != "marker"]
+if (ncol(pval.flags) == 2){
+  cname <- names(pval.flags)[2]
+  pval.flags <- data.frame(V1 = pval.flags[,2], row.names = pval.flags$marker)
+  names(pval.flags) <- cname
+} else {
+  pval.flags <- pval.flags[,names(pval.flags) != "marker"]  
+}
 
 # remove any rows with NAs
 markers <- na.omit(markers)
@@ -243,3 +249,4 @@ write.table(anno.cols, file = "anno.txt", row.names = F, col.names = F, sep = "\
 
 # close gds
 seqClose(gds.data)
+
