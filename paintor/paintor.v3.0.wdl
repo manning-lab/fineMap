@@ -152,13 +152,12 @@ workflow group_assoc_wf {
 
 
 	File this_interval_file
-	File this_annotation_file
+	File? this_annotation_file
 	String? these_anno_cols
 	Int? this_mac
 	String this_pval_col
 	String this_effect_col
 	Int this_max_causal
-	Float? this_pval_thresh
 
 	Int pre_memory
 	Int paintor_memory
@@ -185,11 +184,11 @@ workflow group_assoc_wf {
 		}
 
 		call runPaintor {
-			input: interval_string = this_interval_pair.right, ld_files = preprocess.ld_files, annotation_out = preprocess.annotation_out, assoc_out = preprocess.assoc_out, zcol_names = preprocess.zcol_names, ld_names = preprocess.ld_names, anno_names = these_anno_cols, max_causal = this_max_causal, memory = paintor_memory, disk = this_disk
+			input: interval_string = this_interval_pair.right, ld_files = preprocess.ld_files, annotation_out = preprocess.annotation_out, assoc_out = preprocess.assoc_out, zcol_names = preprocess.zcol_names, ld_names = preprocess.ld_names, anno_names = preprocess.anno_names, max_causal = this_max_causal, memory = paintor_memory, disk = this_disk
 		}
 
 		call summary {
-			input: interval_string = this_interval_pair.right, paintor_results = runPaintor.results, annotation_out = preprocess.annotation_out, anno_names = these_anno_cols, ld_avg = preprocess.ld_avg, memory = summary_memory, disk = this_disk
+			input: interval_string = this_interval_pair.right, paintor_results = runPaintor.results, annotation_out = preprocess.annotation_out, anno_names = preprocess.anno_names, ld_avg = preprocess.ld_avg, memory = summary_memory, disk = this_disk
 		}
 	}
 
