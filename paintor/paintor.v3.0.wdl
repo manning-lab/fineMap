@@ -100,7 +100,7 @@ task summary {
 	Int memory
 	Int disk
 
-	String anno = sub(anno, ",", " ")
+	String anno = sub(anno_names, ",", " ")
 	String interval = sub(interval_string, "\t", ".")
 
 	command {
@@ -189,11 +189,11 @@ workflow group_assoc_wf {
 		}
 
 		call runPaintor {
-			input: interval_string = this_interval_pair.right, ld_files = preprocess.ld_files, annotation_out = preprocess.annotation_out, assoc_out = preprocess.assoc_out, zcol_names = preprocess.zcol_names, ld_names = preprocess.ld_names, anno_names = preprocess.anno_names, max_causal = this_max_causal, memory = paintor_memory, disk = this_disk
+			input: interval_string = this_interval_pair.right, ld_files = preprocess.ld_files, annotation_out = preprocess.annotation_out, assoc_out = preprocess.assoc_out, zcol_names = preprocess.zcol_names, ld_names = preprocess.ld_names, anno_names = these_anno_cols, max_causal = this_max_causal, memory = paintor_memory, disk = this_disk
 		}
 
 		call summary {
-			input: interval_string = this_interval_pair.right, paintor_results = runPaintor.results, annotation_out = preprocess.annotation_out, anno_names = preprocess.anno_names, ld_avg = preprocess.ld_avg, memory = summary_memory, disk = this_disk
+			input: interval_string = this_interval_pair.right, paintor_results = runPaintor.results, annotation_out = preprocess.annotation_out, anno_names = these_anno_cols, ld_avg = preprocess.ld_avg, memory = summary_memory, disk = this_disk
 		}
 	}
 
