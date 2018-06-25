@@ -86,13 +86,12 @@ task runPaintor {
 	}
 }
 
-task summary {
+task summaryLD {
 	String interval_string
 	File paintor_results
 	File annotation_out
 	File anno_names
 	File ld_avg
-	Boolean plot_ld
 
 	Int memory
 	Int disk
@@ -109,7 +108,44 @@ task summary {
 		-r ${ld_avg} \
 		-o ${interval} \
 		-t 99 \
-		-p ${true="-L y" false="-L n" plot_ld}
+		-p \ 
+		-L y
+	}
+
+	runtime {
+		docker: "manninglab/finemap:paintor.canvis"
+		disks: "local-disk ${disk} SSD"
+		memory: "${memory}G"
+	}
+	
+	output {
+		File html = "${interval}.html"
+		File svg = "${interval}.svg"
+	}
+
+}
+
+task summaryNoLD {
+	String interval_string
+	File paintor_results
+	File annotation_out
+	File anno_names
+
+	Int memory
+	Int disk
+
+	Array[String] anno = read_lines(anno_names)
+	String interval = sub(interval_string, "\t", ".")
+
+	command {
+		python /fineMap/paintor/CANVIS.py \
+		-l ${paintor_results} \
+		-z meta_p \
+		-a ${annotation_out} \
+		-s ${sep=" " anno} \
+		-o ${interval} \
+		-t 99 \
+		-p 
 	}
 
 	runtime {
@@ -158,6 +194,7 @@ workflow group_assoc_wf {
 	String this_pval_col
 	String this_effect_col
 	Int this_max_causal
+	Boolean plot_ld
 
 	Int pre_memory
 	Int paintor_memory
@@ -187,9 +224,17 @@ workflow group_assoc_wf {
 			input: interval_string = this_interval_pair.right, ld_files = preprocess.ld_files, annotation_out = preprocess.annotation_out, assoc_out = preprocess.assoc_out, zcol_names = preprocess.zcol_names, ld_names = preprocess.ld_names, anno_names = preprocess.anno_names, max_causal = this_max_causal, memory = paintor_memory, disk = this_disk
 		}
 
-		call summary {
-			input: interval_string = this_interval_pair.right, paintor_results = runPaintor.results, annotation_out = preprocess.annotation_out, anno_names = preprocess.anno_names, ld_avg = preprocess.ld_avg, memory = summary_memory, disk = this_disk
+		if (plot_ld) {
+			call summaryLD {
+				input: interval_string = this_interval_pair.right, paintor_results = runPaintor.results, annotation_out = preprocess.annotation_out, anno_names = preprocess.anno_names, ld_avg = preprocess.ld_avg, memory = summary_memory, disk = this_disk
+			}	
 		}
+		if (!plot_ld){
+			call summaryNoLD {
+				input: interval_string = this_interval_pair.right, paintor_results = runPaintor.results, annotation_out = preprocess.annotation_out, anno_names = preprocess.anno_names, memory = summary_memory, disk = this_disk
+			}	
+		}
+		
 	}
 
 	call catResults {
