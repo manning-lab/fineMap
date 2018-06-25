@@ -18,7 +18,6 @@ anno.cols <- unlist(strsplit(input_args[6],","))
 mac <- as.numeric(input_args[7])
 pval.col <- input_args[8]
 effect.col <- input_args[9]
-pval.thresh <- as.numeric(input_args[10])
 
 ## # these are from the DCC pipeline, credit -> S. Gogarten 
 .variantDF <- function(gds) {
@@ -92,6 +91,9 @@ for (gind in seq(1,length(sample.ids))){
   
   # store variant ids
   var.ids[[gind]] <- seqGetData(gds.data, "variant.id")
+  
+  # reset filter
+  seqResetFilter(gds.data)
 }
 
 # get the intersection
@@ -118,7 +120,7 @@ for (gind in seq(1,length(assoc.files))){
   c.assoc <- fread(assoc.files[gind], data.table = F, stringsAsFactors = F)[,c("chr","pos","ref","alt",pval.col,effect.col)]
   c.assoc$marker <- paste(c.assoc$chr, c.assoc$pos, c.assoc$ref, c.assoc$alt, sep = ":")
   c.assoc <- c.assoc[c.assoc$marker %in% markers$marker, ]
-  pval.flags <- merge(pval.flags, c.assoc[,c("marker","Score.pval")], by.x = "marker", by.y = "marker")
+  pval.flags <- merge(pval.flags, c.assoc[,c("marker",pval.col)], by.x = "marker", by.y = "marker")
   colnames(pval.flags)[gind+1] <- paste0("p.",gind)
   c.assoc$Z <- abs(qnorm(c.assoc[, pval.col]/2))*sign(c.assoc[,effect.col])
   c.assoc <- c.assoc[,c("marker","Z")]
@@ -128,9 +130,6 @@ for (gind in seq(1,length(assoc.files))){
 
 row.names(pval.flags) <- pval.flags$marker
 pval.flags <- pval.flags[,names(pval.flags) != "marker"]
-pval.flags.tf <- pval.flags < pval.thresh
-markers.tokeep <- row.names(pval.flags.tf)[rowSums(pval.flags.tf) > 0 ]
-# pval.flags <- pval.flags[row.names(pval.flags) %in% markers.tokeep,]
 
 # remove any rows with NAs
 markers <- na.omit(markers)
@@ -150,44 +149,51 @@ final <- final[order(final$pos),]
 ##
 
 ## This will process the annotation data
-# Load
-anno.data <- read.table(annotation.file, sep="\t", header=F, as.is=T)
+# first check if we want to use annotations
+if (anno.cols == "NA" || annotation.file == "NA"){
+  anno.cols <- c("dummy_annotation")
+  anno.matrix <- matrix(data = 1, nrow = nrow(markers), ncol = 1)
+} else {
 
-# make sure chr columns are in same format
-if (startsWith(anno.data[1,1], "chr") && !(startsWith(chr, "chr"))){
-  anno.data[,1] <- sub("chr","",anno.data[,1])
-} else if (!(startsWith(anno.data[1,1], "chr")) && startsWith(chr, "chr")){
-  anno.data[,1] <- sub("^","chr",anno.data[,1])
-} else {}
-
-# make anno into granges object
-anno.data.gr <- GRanges(seqnames = anno.data[,1], ranges = IRanges(start = anno.data[,2], end = anno.data[,3]), state = anno.data[,4])
-
-# make markers into granges object
-markers.gr <- GRanges(seqnames = markers$chr, ranges = IRanges(start = as.numeric(as.character(markers$pos)), end = as.numeric(as.character(markers$pos))), ref = markers$ref, alt = markers$alt)
-
-# get overlap
-markers.ovp <- findOverlaps(markers.gr, anno.data.gr)
-
-# now get the right states for each variant
-markers.ovp <- markers.ovp[unique(queryHits(markers.ovp)),]
-markers.gr$state <- anno.data.gr[subjectHits(markers.ovp),]$state
-
-# back to data frame
-markers <- merge(markers, as.data.frame(markers.gr)[,c("seqnames", "start","ref","alt","state")], by.x = c("chr", "pos","ref","alt"), by.y = c("seqnames", "start","ref","alt"), all.x = T)
-
-# encode states as int positions in |#states| vector
-state.map <- data.frame(state = unique(anno.data[,4]))
-state.map$state.ind <- seq(1,nrow(state.map))
-markers <- merge(markers, state.map, by.x = "state", by.y = "state")
-markers <- markers[order(markers$pos),]
-
-# make matrix of 0s for 1 hot vecs
-anno.matrix <- matrix(data = 0, nrow = nrow(markers), ncol = nrow(state.map))
-
-# make the binary vecs
-for (i in seq(1,nrow(anno.matrix))){
-  anno.matrix[i,markers$state.ind[i]] <- 1
+  # Load
+  anno.data <- read.table(annotation.file, sep="\t", header=F, as.is=T)
+  
+  # make sure chr columns are in same format
+  if (startsWith(anno.data[1,1], "chr") && !(startsWith(chr, "chr"))){
+    anno.data[,1] <- sub("chr","",anno.data[,1])
+  } else if (!(startsWith(anno.data[1,1], "chr")) && startsWith(chr, "chr")){
+    anno.data[,1] <- sub("^","chr",anno.data[,1])
+  } else {}
+  
+  # make anno into granges object
+  anno.data.gr <- GRanges(seqnames = anno.data[,1], ranges = IRanges(start = anno.data[,2], end = anno.data[,3]), state = anno.data[,4])
+  
+  # make markers into granges object
+  markers.gr <- GRanges(seqnames = markers$chr, ranges = IRanges(start = as.numeric(as.character(markers$pos)), end = as.numeric(as.character(markers$pos))), ref = markers$ref, alt = markers$alt)
+  
+  # get overlap
+  markers.ovp <- findOverlaps(markers.gr, anno.data.gr)
+  
+  # now get the right states for each variant
+  markers.ovp <- markers.ovp[unique(queryHits(markers.ovp)),]
+  markers.gr$state <- anno.data.gr[subjectHits(markers.ovp),]$state
+  
+  # back to data frame
+  markers <- merge(markers, as.data.frame(markers.gr)[,c("seqnames", "start","ref","alt","state")], by.x = c("chr", "pos","ref","alt"), by.y = c("seqnames", "start","ref","alt"), all.x = T)
+  
+  # encode states as int positions in |#states| vector
+  state.map <- data.frame(state = unique(anno.data[,4]))
+  state.map$state.ind <- seq(1,nrow(state.map))
+  markers <- merge(markers, state.map, by.x = "state", by.y = "state")
+  markers <- markers[order(markers$pos),]
+  
+  # make matrix of 0s for 1 hot vecs
+  anno.matrix <- matrix(data = 0, nrow = nrow(markers), ncol = nrow(state.map))
+  
+  # make the binary vecs
+  for (i in seq(1,nrow(anno.matrix))){
+    anno.matrix[i,markers$state.ind[i]] <- 1
+  }
 }
 ##
 ## Now calculate the LD matricies
@@ -201,40 +207,39 @@ for (gind in seq(1,length(sample.ids))){
   
   # save it
   write.table(ld, file = paste0(out.pref,".",ld.names[gind]), row.names = F, col.names = F, sep = " ", quote = F)
-  
-  # also save ld matrix for markers below pvalue threshold
-  ld <- ld[which(markers$marker %in% markers.tokeep),which(markers$marker %in% markers.tokeep)]
-  write.table(ld, file = paste0("pval.passed.",out.pref,".",ld.names[gind]), row.names = F, col.names = F, sep = " ", quote = F)
 }
 
 # make general LD matrix
 all.sample.ids <- do.call(c, sample.ids)
 ld <- data.frame(snpgdsLDMat(gds.data, method = "corr", slide = 0, sample.id = all.sample.ids, snp.id = markers$variant.id)$LD)
 ld <- ld * ld
-d <- ld[which(markers$marker %in% markers.tokeep),which(markers$marker %in% markers.tokeep)]
 
 # save it
 write.table(ld, file = paste0(out.pref,".all.LD"), row.names = F, col.names = F, sep = " ", quote = F)
-
 ##
 
 # write out the markers
 write.table(markers[,c("pos","ref","alt","marker")], file = paste0(out.pref,".markers.csv"), row.names = F, col.names = T, sep = ",", quote = F)
-write.table(markers[markers$marker %in% markers.tokeep,c("pos","ref","alt","marker")], file = paste0("pval.passed.",out.pref,".markers.csv"), row.names = F, col.names = T, sep = ",", quote = F)
 
 # save annotations
-write.table(anno.matrix, file=paste0(out.pref,".annotations"), quote=F, sep=" ", row.names=F, col.names = state.map$state)
-write.table(anno.matrix[which(markers$marker %in% markers.tokeep),], file=paste0("pval.passed.",out.pref,".annotations"), quote=F, sep=" ", row.names=F, col.names = state.map$state)
+if (anno.cols[1] == "dummy_annotation"){
+  write.table(anno.matrix, file=paste0(out.pref,".annotations"), quote=F, sep=" ", row.names=F, col.names = c("dummy_annotation"))
+} else {
+  write.table(anno.matrix, file=paste0(out.pref,".annotations"), quote=F, sep=" ", row.names=F, col.names = state.map$state)  
+}
+
 
 # save assoc file
 write.table(final, file=out.pref, sep=" ", row.names=F, quote=F)
-write.table(final[which(markers$marker %in% markers.tokeep),], file=paste0("pval.passed.",out.pref), sep=" ", row.names=F, quote=F)
 
 # export col names for zscores
 write.table(zcol.names, file = "zcol.txt", row.names = F, col.names = F, sep = "\n", quote = F)
 
 # export the ld names
 write.table(ld.names, file = "ld.txt", row.names = F, col.names = F, sep = "\n", quote = F)
+
+# export the annotation names
+write.table(anno.cols, file = "anno.txt", row.names = F, col.names = F, sep = "\n", quote = F)
 
 # close gds
 seqClose(gds.data)
