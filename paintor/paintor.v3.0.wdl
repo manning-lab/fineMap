@@ -92,6 +92,7 @@ task summary {
 	File annotation_out
 	File anno_names
 	File ld_avg
+	Boolean plot_ld
 
 	Int memory
 	Int disk
@@ -108,8 +109,7 @@ task summary {
 		-r ${ld_avg} \
 		-o ${interval} \
 		-t 99 \
-		-p \
-		-L y
+		-p ${true="-L y" false="-L n" plot_ld}
 	}
 
 	runtime {
