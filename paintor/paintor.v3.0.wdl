@@ -103,13 +103,14 @@ task summaryLD {
 	command {
 		python /fineMap/paintor/CANVIS.py \
 		-l ${paintor_results} \
-		-z meta_p \
+		-v meta_p \
 		-a ${annotation_out} \
-		-s ${sep=" " anno} \
+		-c ${sep=" " anno} \
 		-r ${ld_avg} \
 		-o ${interval} \
 		-t 99 \
 		-p \ 
+		-T ${default="1" pval_thresh} \
 		-L y
 	}
 
@@ -122,6 +123,7 @@ task summaryLD {
 	output {
 		File html = "${interval}.html"
 		File svg = "${interval}.svg"
+		File pdf = "${interval}.pdf"
 	}
 
 }
@@ -131,6 +133,7 @@ task summaryNoLD {
 	File paintor_results
 	File annotation_out
 	File anno_names
+	Float? pval_thresh
 
 	Int memory
 	Int disk
@@ -146,7 +149,8 @@ task summaryNoLD {
 		-s ${sep=" " anno} \
 		-o ${interval} \
 		-t 99 \
-		-p 
+		-p \
+		-T ${default="1" pval_thresh}
 	}
 
 	runtime {
@@ -158,6 +162,7 @@ task summaryNoLD {
 	output {
 		File html = "${interval}.html"
 		File svg = "${interval}.svg"
+		File pdf = "${interval}.pdf"
 	}
 
 }
@@ -196,6 +201,7 @@ workflow group_assoc_wf {
 	String this_effect_col
 	Int this_max_causal
 	Boolean plot_ld
+	Float? this_pval_thresh
 
 	Int pre_memory
 	Int paintor_memory
@@ -227,12 +233,12 @@ workflow group_assoc_wf {
 
 		if (plot_ld) {
 			call summaryLD {
-				input: interval_string = this_interval_pair.right, paintor_results = runPaintor.results, annotation_out = preprocess.annotation_out, anno_names = preprocess.anno_names, ld_avg = preprocess.ld_avg, memory = summary_memory, disk = this_disk
+				input: interval_string = this_interval_pair.right, paintor_results = runPaintor.results, annotation_out = preprocess.annotation_out, anno_names = preprocess.anno_names, ld_avg = preprocess.ld_avg, pval_thresh = this_pval_thresh, memory = summary_memory, disk = this_disk
 			}	
 		}
 		if (!plot_ld){
 			call summaryNoLD {
-				input: interval_string = this_interval_pair.right, paintor_results = runPaintor.results, annotation_out = preprocess.annotation_out, anno_names = preprocess.anno_names, memory = summary_memory, disk = this_disk
+				input: interval_string = this_interval_pair.right, paintor_results = runPaintor.results, annotation_out = preprocess.annotation_out, anno_names = preprocess.anno_names, pval_thresh = this_pval_thresh, memory = summary_memory, disk = this_disk
 			}	
 		}
 		
