@@ -178,14 +178,15 @@ if (anno.cols == "NA" || annotation.file == "NA"){
   markers.gr <- GRanges(seqnames = markers$chr, ranges = IRanges(start = as.numeric(as.character(markers$pos)), end = as.numeric(as.character(markers$pos))), ref = markers$ref, alt = markers$alt)
   
   # get overlap
-  markers.ovp <- findOverlaps(markers.gr, anno.data.gr)
+  markers.ovp.ids <- findOverlaps(markers.gr, anno.data.gr)
   
   # now get the right states for each variant
-  markers.ovp <- markers.ovp[unique(queryHits(markers.ovp)),]
-  markers.gr$state <- anno.data.gr[subjectHits(markers.ovp),]$state
+  markers.ovp <- markers.gr[queryHits(markers.ovp.ids),]
+  markers.ovp$state <- anno.data.gr[subjectHits(markers.ovp.ids),]$state
+  markers.ovp <- unique(markers.ovp)
   
   # back to data frame
-  markers <- merge(markers, as.data.frame(markers.gr)[,c("seqnames", "start","ref","alt","state")], by.x = c("chr", "pos","ref","alt"), by.y = c("seqnames", "start","ref","alt"), all.x = T)
+  markers <- merge(markers, as.data.frame(markers.ovp)[,c("seqnames", "start","ref","alt","state")], by.x = c("chr", "pos","ref","alt"), by.y = c("seqnames", "start","ref","alt"), all.x = T)
   
   # encode states as int positions in |#states| vector
   state.map <- data.frame(state = unique(anno.data[,4]))
