@@ -54,10 +54,10 @@ print(out.pref)
 # Load sample ids
 sample.ids <- lapply(sample.ids.files, function(x) fread(x, data.table = F, stringsAsFactors = F, header = F)$V1)
 print(names(sample.ids))
-                     
+
 # make the output names for zcol and ld
 names.suf <- as.character(seq(1,length(sample.ids)))
-                     
+
 zcol.names <- paste("ZSCORE", names.suf, sep = ".")
 ld.names <- paste("LD", names.suf, sep = ".")
 
@@ -160,7 +160,7 @@ if (anno.cols == "NA" || annotation.file == "NA"){
   anno.cols <- c("dummy_annotation")
   anno.matrix <- matrix(data = 1, nrow = nrow(markers), ncol = 1)
 } else {
-
+  
   # Load
   anno.data <- read.table(annotation.file, sep="\t", header=F, as.is=T)
   
@@ -210,7 +210,7 @@ for (gind in seq(1,length(sample.ids))){
   # calculate LD
   ld <- data.frame(snpgdsLDMat(gds.data, method = "corr", slide = 0, sample.id = sample.ids[[gind]], snp.id = markers$variant.id)$LD)
   ld <- ld * ld
-  ld[is.nan(ld)] <- 0
+  ld[is.na(ld)] <- 0
   
   # save it
   write.table(ld, file = paste0(out.pref,".",ld.names[gind]), row.names = F, col.names = F, sep = " ", quote = F)
@@ -220,7 +220,7 @@ for (gind in seq(1,length(sample.ids))){
 all.sample.ids <- do.call(c, sample.ids)
 ld <- data.frame(snpgdsLDMat(gds.data, method = "corr", slide = 0, sample.id = all.sample.ids, snp.id = markers$variant.id)$LD)
 ld <- ld * ld
-ld[is.nan(ld)] <- 0
+ld[is.na(ld)] <- 0
 
 # save it
 write.table(ld, file = paste0(out.pref,".all.LD"), row.names = F, col.names = F, sep = " ", quote = F)
