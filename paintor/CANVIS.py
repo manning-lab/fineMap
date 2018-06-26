@@ -2,6 +2,7 @@
 
 from optparse import OptionParser
 import sys
+import subprocess
 import pandas as pd
 import numpy as np
 import matplotlib
@@ -75,13 +76,13 @@ def Read_Input(locus_file, data_names, ld_files, annotation_file, annotation_col
             annotation_data = annotation_data[annotation_cols]
         annotation_data = annotation_data.loc[old_index,:]
         annotation_data = annotation_data.reset_index(drop=True)
-        annotation_data = annotation_data.as_matrix()
+        annotation_data = annotation_data.values
     else:
         annotation_data = None
 
-    data_toplot = data_toplot.as_matrix()
-    position = position.as_matrix()
-    posterior = posterior.as_matrix()
+    data_toplot = data_toplot.values
+    position = position.values
+    posterior = posterior.values
 
 
     return [data_toplot, posterior, position, lds, annotation_data, annotation_cols]
@@ -252,7 +253,7 @@ def Zscore_to_Pvalue(zscore):
     return pvalue
 
 def Find_Top_SNP(value_vect, correlation_matrix, pval):
-    correlation_matrix = correlation_matrix.as_matrix()
+    correlation_matrix = correlation_matrix.values
     # use r^2
     correlation_matrix = np.square(correlation_matrix)
     value_vect = np.absolute(value_vect)
@@ -293,7 +294,7 @@ def Plot_Heatmap(lds, greyscale, large_ld):
                     linewidths=0, cbar=False, xticklabels=False, yticklabels=False, ax=None)
         heatmap = fig
 
-        matrix = correlation_matrix.as_matrix()
+        matrix = correlation_matrix.values
         min_value = np.amin(matrix)
         max_value = np.amax(matrix)
         fig = plt.figure(figsize=(3, 1.0))
@@ -500,6 +501,14 @@ def main():
         sys.exit(usage)
 
     [data_toplot, posterior, position, lds, annotation_data, annotation_cols] = Read_Input(locus_file, values, ld_files, annotation_file, annotation_cols, pthresh)
+
+    # check that we still have some data
+    if np.shape(data_toplot)[0] < 1 or np.shape(posterior)[0] < 1 or np.shape(position)[0] < 1 :
+        subprocess.call(['touch', output+'.pdf'])
+        subprocess.call(['touch', output+'.html'])
+        subprocess.call(['touch', output+'.svg'])
+        warnings.warn('No variants left to plot, trying removing the pvalue threshold or reviewing the PAINTOR ouput. Returning empty output files.')
+        sys.exit(0)
 
     # plot posterior probability
     posterior_plots = Plot_Position_Value(position, posterior, threshold, greyscale)
