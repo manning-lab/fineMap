@@ -425,9 +425,11 @@ def Assemble_Figure(data_plots, posterior_plots, heatmaps, annotation_plot, outp
 def svgToPdfPng(output):
     img = svg2rlg(output+'.svg')
     doc = SimpleDocTemplate(output+'.pdf',
-                            pagesize=(8*inch,13.2*inch),
+                            pagesize=(6*inch,13.2*inch),
                             rightMargin=0,
-                            leftMargin=0)
+                            leftMargin=0,
+                            topmargin=0,
+                            bottommargin=0)
     docs = []
     docs.append(img)
  
