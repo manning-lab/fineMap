@@ -309,6 +309,58 @@ def Plot_Heatmap(lds, greyscale, large_ld):
         ld_arr.append((heatmap, bar))
     return ld_arr
 
+def Assemble_PDF(data_plots, posterior_plots, heatmaps, annotation_plot, output):
+    # not sure I need these
+    DPI = 300
+    
+    # define sizes
+    if heatmaps == None:
+        horizontal = 'n'
+    elif len(heatmaps)>1:
+        horizontal='y'
+
+    if horizontal == 'y':
+        size_width = 11
+        size_height = 9
+    else:
+        size_width = 9
+        size_height = 11
+
+    # save posterior plot 
+    posterior_plots.savefig('posterior_plots.png', format='png', dpi=DPI, transparent=True)
+    # save annotation plots
+    for i,plot in enumerate(annotation_plot):
+        plot.savefig('annotation_plot'+str(i)+'.png', format='png', dpi=DPI, transparent=True)
+    # save data plot
+    for i,plot in data_plots:
+        data_plots.savefig('value_plots.png', format='png', dpi=DPI, transparent=True)
+    # save heatmap
+    for i,heatmap in heatmaps:
+        plot = heatmap[0]
+        plot.savefig('heatmap+'+str(i)+'.png', format='png', dpi=DPI, transparent=True)
+
+    # colorbar
+    colorbar_h = heatmap[1]
+    colorbar_h.savefig('colorbar_h.png', format='png', dpi=DPI, transparent=True)
+
+    plot = data_plots[0]
+    colorbar = plot[1]
+    colorbar.savefig('colorbar.png', format='png', dpi=DPI, transparent=True)
+
+    doc = SimpleDocTemplate(output+".pdf", pagesize=(size_width*inch,size_height*inch), rightMargin=72, leftMargin=72, topMargin=72, bottomMargin=18)
+
+    Story = [Image('posterior_plots.png')]
+    ann = [Image('annotation_plot'+str(i)+'.png') for i in len(annotation_plot)]
+    Story.extend(ann)
+    Story.append(Image('value_plots.png'))
+    Story.append(Image('colorbar_h.png'))
+
+    ann = [Image('heatmap+'+str(i)+'.png') for i in len(heatmaps)]
+    Story.extend(ann)
+    Story.append(Image('colorbar.png'))
+    doc.build(Story)
+    
+
 def Assemble_Figure(data_plots, posterior_plots, heatmaps, annotation_plot, output, horizontal):
     """Assemble everything together and return svg and pdf of final figure"""
     DPI = 300
