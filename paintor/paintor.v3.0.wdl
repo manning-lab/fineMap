@@ -109,7 +109,7 @@ task summaryLD {
 		-r ${ld_avg} \
 		-o ${interval} \
 		-t 99 \
-		-p \ 
+		-p \
 		-T ${default="1" pval_thresh} \
 		-L y
 	}
