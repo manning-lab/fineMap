@@ -92,6 +92,7 @@ task summaryLD {
 	File annotation_out
 	File anno_names
 	File ld_avg
+	Float? pval_thresh
 
 	Int memory
 	Int disk

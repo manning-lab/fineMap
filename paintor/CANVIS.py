@@ -1,23 +1,26 @@
-# FROM https://github.com/gkichaev/PAINTOR_V3.0/blob/master/CANVIS/CANVIS.py with some changes
+# adaptation of PAINTOR CANVIS.py script -- https://github.com/gkichaev/PAINTOR_V3.0
 
+from optparse import OptionParser
+import sys
+import pandas as pd
+import numpy as np
 import matplotlib
 matplotlib.use('Agg')
-import numpy as np
-import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 import matplotlib.patches as mpatches
-
-
 from scipy.stats import norm
 import math
-from optparse import OptionParser
 import svgutils.transform as sg
-import sys
-# import cairosvg
 import warnings
 import os
+from reportlab.graphics import renderPDF, renderPM
+from reportlab.platypus import SimpleDocTemplate
+from svglib.svglib import svg2rlg
+from reportlab.lib.pagesizes import letter, A5, inch
+
+
 
 def vararg_callback(option, opt_str, value, parser):
     """Function that allows for a variable number of arguments at the command line"""
@@ -39,174 +42,164 @@ def vararg_callback(option, opt_str, value, parser):
     del parser.rargs[:len(value)]
     setattr(parser.values, option.dest, value)
 
-def Read_Input(locus_fname, zscore_names, ld_fnames, annotation_fname, specific_annotations, interval):
+def Read_Input(locus_file, data_names, ld_files, annotation_file, annotation_cols, threshold = np.inf):
     """Function that reads in all your data files"""
-    zscore_data = pd.read_csv(locus_fname, delim_whitespace=True)
-    zscores = zscore_data[zscore_names]
-    location = zscore_data['pos']
-    pos_prob = zscore_data['Posterior_Prob']
+    # read data and subset by threshold
+    paintor_data = pd.read_csv(locus_file, delim_whitespace=True)
+    paintor_data = paintor_data[paintor_data[data_names[0]] < threshold]
+    old_index = paintor_data.index.values
+    paintor_data = paintor_data.reset_index(drop=True)
 
-    if interval is not None: # user input an interval
-        a = int(interval[0])
-        b = int(interval[1])
-    elif interval is None:  # user did not input an interval; set interval to whole interval
-        a = np.amin(location)
-        b = np.amax(location)
-    if a < location[0] or a > location[len(location)-1]:
-        # user input out of range interval; set interval to whole interval
-        warnings.warn('Specified interval is out of range; left bound set to first valid location')
-        a = np.amin(location)
-    if b > location[len(location) - 1] or b < location[0]:
-        warnings.warn('Specified interval is out of range; right bound set to last valid location')
-        b = np.amax(location)
+    data_toplot = paintor_data[data_names]
+    position = paintor_data['pos']
+    posterior = paintor_data['Posterior_Prob']
 
-    indices = np.where((location >= a) & (location <= b))
-    N = indices[0][0]
-    M = indices[-1][-1]
     lds = []
-    if ld_fnames is not None:
-        for ld_fname in ld_fnames:
-            ld = pd.read_csv(ld_fname, header=None, delim_whitespace=True)
-            ld_matrix = ld.as_matrix()
-            # calculate index for location form location
-            ld_matrix = ld_matrix[N:M, N:M]
-            ld = pd.DataFrame(data=ld_matrix)
+    if ld_files is not None:
+        for ld_file in ld_files:
+            ld = pd.read_csv(ld_file, header=None, delim_whitespace=True)
+            ld = ld.iloc[old_index,old_index]
+            ld = ld.reset_index(drop=True)
+            ld.columns = range(ld.shape[1])
             lds.append(ld)
     else:
         lds = None
-    if annotation_fname is not None:
-        annotation_data = pd.read_csv(annotation_fname, delim_whitespace=True)
-        if specific_annotations is not None:
-            annotations = annotation_data[specific_annotations]
-        else: # only data; no names
-            header = pd.read_csv(annotation_fname, delim_whitespace=True, header=None)
+    if annotation_file is not None:
+        annotation_data = pd.read_csv(annotation_file, delim_whitespace=True)
+        if annotation_cols is not None:
+            annotation_data = annotation_data[annotation_cols]
+        else: 
+            header = pd.read_csv(annotation_file, delim_whitespace=True, header=None)
             header = header.values.tolist()
-            specific_annotations = header[0]
-            annotations = annotation_data[specific_annotations]
-        annotations = annotations.as_matrix()
-        annotations = annotations[N:M]
-    else: # no data or names
-        annotations = None
-    zscores = zscores.as_matrix()
-    zscores = zscores[N:M, :]
-    pos_prob = pos_prob.as_matrix()
-    pos_prob = pos_prob[N:M]
-    location = location.as_matrix()
-    location = location[N:M]
-
-    return [zscores,pos_prob,location, lds, annotations, specific_annotations]
-
-def Read_Input_top(locus_fname, zscore_names, ld_fnames, annotation_fname, specific_annotations, interval, top_locus_fname):
-    """Function that reads in all your data files"""
-    zscore_data = pd.read_csv(locus_fname, delim_whitespace=True)
-    top_data = pd.read_csv(top_locus_fname)
-    zscore_data = zscore_data[zscore_data['marker'].isin(list(top_data['marker']))].reset_index()
-    zscores = zscore_data[zscore_names]
-    location = zscore_data['pos']
-    
-
-    pos_prob = zscore_data['Posterior_Prob']
-
-    if interval is not None: # user input an interval
-        a = int(interval[0])
-        b = int(interval[1])
-    elif interval is None:  # user did not input an interval; set interval to whole interval
-        a = np.amin(location)
-        b = np.amax(location)
-    if a < location[0] or a > location[len(location)-1]:
-        # user input out of range interval; set interval to whole interval
-        warnings.warn('Specified interval is out of range; left bound set to first valid location')
-        a = np.amin(location)
-    if b > location[len(location) - 1] or b < location[0]:
-        warnings.warn('Specified interval is out of range; right bound set to last valid location')
-        b = np.amax(location)
-
-    indices = np.where((location >= a) & (location <= b))
-    N = indices[0][0]
-    M = indices[-1][-1]
-    lds = []
-    if ld_fnames is not None:
-        for ld_fname in ld_fnames:
-            ld = pd.read_csv(ld_fname, header=None, delim_whitespace=True)
-            ld_matrix = ld.as_matrix()
-            # calculate index for location form location
-            ld_matrix = ld_matrix[N:M, N:M]
-            ld = pd.DataFrame(data=ld_matrix)
-            lds.append(ld)
+            annotation_cols = header[0]
+            annotation_data = annotation_data[annotation_cols]
+        annotation_data = annotation_data.loc[old_index,:]
+        annotation_data = annotation_data.reset_index(drop=True)
+        annotation_data = annotation_data.as_matrix()
     else:
-        lds = None
-    if annotation_fname is not None:
-        annotation_data = pd.read_csv(annotation_fname, delim_whitespace=True)
-        if specific_annotations is not None:
-            annotations = annotation_data[specific_annotations]
-        else: # only data; no names
-            header = pd.read_csv(annotation_fname, delim_whitespace=True, header=None)
-            header = header.values.tolist()
-            specific_annotations = header[0]
-            annotations = annotation_data[specific_annotations]
-        annotations = annotations.as_matrix()
-        annotations = annotations[N:M]
-    else: # no data or names
-        annotations = None
-    zscores = zscores.as_matrix()
-    zscores = zscores[N:M, :]
-    pos_prob = pos_prob.as_matrix()
-    pos_prob = pos_prob[N:M]
-    location = location.as_matrix()
-    location = location[N:M]
+        annotation_data = None
 
-    return [zscores,pos_prob,location, lds, annotations, specific_annotations]
+    data_toplot = data_toplot.as_matrix()
+    position = position.as_matrix()
+    posterior = posterior.as_matrix()
 
-def Zscore_to_Pvalue(zscore):
-    """Function that converts zscores to pvalues"""
-    abs_zscore = np.absolute(zscore)
-    pvalue = -1 * (norm.logsf(abs_zscore) / math.log(10))
-    return pvalue
 
-# Find the top SNP and return the vector of SNPs relative to it
+    return [data_toplot, posterior, position, lds, annotation_data, annotation_cols]
 
-def Find_Top_SNP(zscore_vect, correlation_matrix, pval):
-    correlation_matrix = correlation_matrix.as_matrix()
-    # use r^2
-    correlation_matrix = np.square(correlation_matrix)
-    zscore_vect = np.absolute(zscore_vect)
-    if pval:
-        top_SNP = zscore_vect.argmin()
+def Plot_Position_Value(position, posterior, threshold, greyscale):
+    """Function that plots z-scores, posterior probabilites, other features """
+    # make the plot greyscale if desired
+    if greyscale == "y":
+        plot_color = '#BEBEBE'
+        set_color = '#000000'
     else:
-        top_SNP = zscore_vect.argmax() # returns index
-    # get column corresponding to top SNP
-    top_vect = correlation_matrix[:][top_SNP]
-    return top_vect, top_SNP
+        plot_color = '#2980b9'
+        set_color = '#D91E18'
+    # get the credible set
+    [credible_loc, credible_prob] = Credible_Set(position, posterior, threshold)
+    # start figure
+    fig = plt.figure(figsize=(6, 3.25))
+    # subplot for posterior plot
+    sub1 = fig.add_subplot(1,1,1, facecolor='white')
+    plt.xlim(np.amin(position), np.amax(position)+1)
+    plt.ylabel('Posterior probabilities', fontsize=10)
+    plt.tick_params(axis='both', which='major', labelsize=10)
+    plt.xlabel('Position', fontsize=10)
+    sub1.scatter(position, posterior, color=plot_color, clip_on=False)
+    if threshold != 0:
+        sub1.scatter(credible_loc, credible_prob, color=set_color, label='Credible Set', clip_on=False)
+        title = "Credible Set: " + str(threshold*100) + "%"
+        credible_set = mpatches.Patch(color=set_color, label=title)
+        legend = plt.legend(handles=[credible_set])
+        for label in legend.get_texts():
+            label.set_fontsize(10)
+    plt.gca().set_ylim(bottom=0)
+    posterior_plots = fig
+    return posterior_plots
 
-# Zscores Plot
+def Credible_Set(position, posterior, threshold):
+    """Function that finds the credible set according to a set threshold"""
+    total = sum(posterior)
+    bounds = threshold*total
+    #make into tuples
+    tuple_vec = []
+    for i in range(0, len(position)):
+        tup = (position[i], posterior[i])
+        tuple_vec.append(tup)
+    #order tuple from largest to smallest
+    tuple_vec = sorted(tuple_vec, key=lambda x: x[1], reverse=True)
+    credible_set_value = []
+    credible_set_loc = []
+    total = 0
+    for tup in tuple_vec:
+        total += tup[1]
+        credible_set_loc.append(tup[0])
+        credible_set_value.append(tup[1])
+        if total > bounds:
+            break
+    return credible_set_loc, credible_set_value
 
-def Plot_Statistic_Value(position, zscore, zscore_names, greyscale, lds, pval):
+def Plot_Annotations(annotation_cols, annotation_data, greyscale):
+    """Plot the annotations with labels"""
+    annotation_tuple = []
+    for i in range(0, len(annotation_cols)):
+        annotation = annotation_data[:,i]
+        colors = []
+        if greyscale == "y":
+            for a in annotation:
+                if a == 1:
+                    colors.append('#000000')
+                else:
+                    colors.append('#FFFFFF')
+        else:
+            color_array = ['#2980b9']
+            for a in annotation:
+                if a == 1:
+                    colors.append(color_array[0])
+                else:
+                    colors.append('#FFFFFF')
+        fig = plt.figure(figsize=(5, .75))
+        ax2 = fig.add_axes([0.05, 0.8, 0.9, 0.15])
+        cmap = mpl.colors.ListedColormap(colors)
+        cmap.set_over('0.25')
+        cmap.set_under('0.75')
+        bounds = range(1, len(annotation)+1)
+        norm = mpl.colors.BoundaryNorm(bounds, cmap.N)
+        annotation_plot = mpl.colorbar.ColorbarBase(ax2, cmap=cmap, norm=norm, spacing='proportional',
+                                                    orientation='horizontal')
+        annotation_plot.set_label(annotation_cols[i], fontsize=8)
+        annotation_plot.set_ticks([])
+        annotation_plot = fig
+        annotation_tuple.append(annotation_plot)
+    return annotation_tuple
+
+def Plot_Statistic_Value(position, data_toplot, values, greyscale, lds, pval):
     """function that plots pvalues from given zscores"""
 
-    zscore_tuple = []
-    for i in range(0, len(zscore_names)):
+    values_tuple = []
+    for i in range(0, len(values)):
         fig = plt.figure(figsize=(6, 3.25))
         sub = fig.add_subplot(1,1,1, facecolor='white')
         plt.xlim(np.amin(position), np.amax(position) + 1)
         plt.tick_params(axis='both', which='major', labelsize=10)
         plt.ylabel('-log10(pvalue)', fontsize=10)
-        z = zscore[:, i]
+        v = data_toplot[:, i]
 
         if pval:
-            pvalue = [-math.log(zv,10) for zv in z]
+            pvalue = [-math.log(zv,10) for zv in v]
         else:
-            pvalue = Zscore_to_Pvalue(z)
+            pvalue = Zscore_to_Pvalue(v)
 
         if lds is not None:
             if i < len(lds): # exists a corresponding LD
                 correlation_matrix = lds[i]
-                [top_vect, top_SNP] = Find_Top_SNP(z, correlation_matrix, pval)
+                [top_vect, top_SNP] = Find_Top_SNP(v, correlation_matrix, pval)
 
             else: # no corresponding LD, so use previously calculated one
-                # warnings.warn("Warning: no corresponding LD matrix for zscore. Plot is made using previous LD matrix.")
+                # warnings.warn("Warning: no corresponding LD matrix for data_toplot. Plot is made using previous LD matrix.")
                 n = len(lds) - 1
                 correlation_matrix = lds[n]
-                [top_vect, top_SNP] = Find_Top_SNP(z, correlation_matrix, pval)
+                [top_vect, top_SNP] = Find_Top_SNP(v, correlation_matrix, pval)
 
             if greyscale == 'y':
                 sub.scatter(position, pvalue, c=top_vect, cmap='Greys', zorder=1, clip_on=False)
@@ -226,7 +219,7 @@ def Plot_Statistic_Value(position, zscore, zscore_names, greyscale, lds, pval):
         x = [np.amin(position), np.amax(position) + 1]
         y = [-1*math.log(5*10**-8)/(math.log(10)), -1*math.log(5*10**-8)/(math.log(10))]
         plt.plot(x,y,'gray', linestyle='dashed', clip_on=False)
-        label = mpatches.Patch(color='#FFFFFF', label=zscore_names[i])
+        label = mpatches.Patch(color='#FFFFFF', label=values[i])
         legend = plt.legend(handles=[label])
         for label in legend.get_texts():
             label.set_fontsize('small')
@@ -248,58 +241,28 @@ def Plot_Statistic_Value(position, zscore, zscore_names, greyscale, lds, pval):
             mpl.colorbar.ColorbarBase(ax1, cmap=cmap, norm=norm, orientation='horizontal')
             bar = fig
 
-        zscore_tuple.append((value_plot,bar))
+        values_tuple.append((value_plot,bar))
 
-    return zscore_tuple
+    return values_tuple
 
-def Plot_Position_Value(position, pos_prob, threshold, greyscale):
-    """Function that plots z-scores, posterior probabilites, other features """
-    if greyscale == "y":
-        plot_color = '#BEBEBE'
-        set_color = '#000000'
+def Zscore_to_Pvalue(zscore):
+    """Function that converts zscores to pvalues"""
+    abs_zscore = np.absolute(zscore)
+    pvalue = -1 * (norm.logsf(abs_zscore) / math.log(10))
+    return pvalue
+
+def Find_Top_SNP(value_vect, correlation_matrix, pval):
+    correlation_matrix = correlation_matrix.as_matrix()
+    # use r^2
+    correlation_matrix = np.square(correlation_matrix)
+    value_vect = np.absolute(value_vect)
+    if pval:
+        top_SNP = value_vect.argmin()
     else:
-        plot_color = '#2980b9'
-        set_color = '#D91E18'
-    [credible_loc, credible_prob] = Credible_Set(position, pos_prob, threshold)
-    fig = plt.figure(figsize=(6, 3.25))
-    sub1 = fig.add_subplot(1,1,1, facecolor='white')
-    plt.xlim(np.amin(position), np.amax(position)+1)
-    plt.ylabel('Posterior probabilities', fontsize=10)
-    plt.tick_params(axis='both', which='major', labelsize=10)
-    plt.xlabel('Location', fontsize=10)
-    sub1.scatter(position, pos_prob, color=plot_color, clip_on=False)
-    if threshold != 0:
-        sub1.scatter(credible_loc, credible_prob, color=set_color, label='Credible Set', clip_on=False)
-        title = "Credible Set: " + str(threshold*100) + "%"
-        credible_set = mpatches.Patch(color=set_color, label=title)
-        legend = plt.legend(handles=[credible_set])
-        for label in legend.get_texts():
-            label.set_fontsize(10)
-    plt.gca().set_ylim(bottom=0)
-    value_plots = fig
-    return value_plots
-
-def Credible_Set(position, pos_prob, threshold):
-    """Function that finds the credible set according to a set threshold"""
-    total = sum(pos_prob)
-    bounds = threshold*total
-    #make into tuples
-    tuple_vec = []
-    for i in range(0, len(position)):
-        tup = (position[i], pos_prob[i])
-        tuple_vec.append(tup)
-    #order tuple from largest to smallest
-    tuple_vec = sorted(tuple_vec, key=lambda x: x[1], reverse=True)
-    credible_set_value = []
-    credible_set_loc = []
-    total = 0
-    for tup in tuple_vec:
-        total += tup[1]
-        credible_set_loc.append(tup[0])
-        credible_set_value.append(tup[1])
-        if total > bounds:
-            break
-    return credible_set_loc, credible_set_value
+        top_SNP = value_vect.argmax() # returns index
+    # get column corresponding to top SNP
+    top_vect = correlation_matrix[:][top_SNP]
+    return top_vect, top_SNP
 
 def Plot_Heatmap(lds, greyscale, large_ld):
     """Function that plots heatmap of LD matrix"""
@@ -345,41 +308,7 @@ def Plot_Heatmap(lds, greyscale, large_ld):
         ld_arr.append((heatmap, bar))
     return ld_arr
 
-def Plot_Annotations(annotation_names, annotation_vectors, greyscale):
-    """Plot the annotations with labels"""
-    annotation_tuple = []
-    for i in range(0, len(annotation_names)):
-        annotation = annotation_vectors[:,i]
-        colors = []
-        if greyscale == "y":
-            for a in annotation:
-                if a == 1:
-                    colors.append('#000000')
-                else:
-                    colors.append('#FFFFFF')
-        else:
-            color_array = ['#2980b9']
-            for a in annotation:
-                if a == 1:
-                    colors.append(color_array[0])
-                else:
-                    colors.append('#FFFFFF')
-        fig = plt.figure(figsize=(5, .75))
-        ax2 = fig.add_axes([0.05, 0.8, 0.9, 0.15])
-        cmap = mpl.colors.ListedColormap(colors)
-        cmap.set_over('0.25')
-        cmap.set_under('0.75')
-        bounds = range(1, len(annotation)+1)
-        norm = mpl.colors.BoundaryNorm(bounds, cmap.N)
-        annotation_plot = mpl.colorbar.ColorbarBase(ax2, cmap=cmap, norm=norm, spacing='proportional',
-                                                    orientation='horizontal')
-        annotation_plot.set_label(annotation_names[i], fontsize=8)
-        annotation_plot.set_ticks([])
-        annotation_plot = fig
-        annotation_tuple.append(annotation_plot)
-    return annotation_tuple
-
-def Assemble_Figure(zscore_plots, value_plots, heatmaps, annotation_plot, output, horizontal):
+def Assemble_Figure(data_plots, posterior_plots, heatmaps, annotation_plot, output, horizontal):
     """Assemble everything together and return svg and pdf of final figure"""
     DPI = 300
     size_prob_plot = 215
@@ -400,9 +329,9 @@ def Assemble_Figure(zscore_plots, value_plots, heatmaps, annotation_plot, output
         size_height = '11in'
 
     fig = sg.SVGFigure(size_width, size_height)
-    value_plots.savefig('value_plots.svg', format='svg', dpi=DPI, transparent=True)
-    value_plots = sg.fromfile('value_plots.svg')
-    plot1 = value_plots.getroot()
+    posterior_plots.savefig('value_plots.svg', format='svg', dpi=DPI, transparent=True)
+    posterior_plots = sg.fromfile('value_plots.svg')
+    plot1 = posterior_plots.getroot()
     if annotation_plot is not None:
         len_ann_plot = (len(annotation_plot))
     else:
@@ -429,7 +358,7 @@ def Assemble_Figure(zscore_plots, value_plots, heatmaps, annotation_plot, output
                 x_move = 510
 
             else:
-                y_scale = size_stat_plot*len(zscore_plots) + (size_heatmap+1) * heatmap_count + len_annotation_plot + size_prob_plot + 110
+                y_scale = size_stat_plot*len(data_plots) + (size_heatmap+1) * heatmap_count + len_annotation_plot + size_prob_plot + 110
                 plot4.moveto(0,y_scale, scale=1.40)
                 plot4.rotate(-45, 0, 0)
                 fig.append(plot4)
@@ -459,7 +388,7 @@ def Assemble_Figure(zscore_plots, value_plots, heatmaps, annotation_plot, output
     #transform and add zscore plots
     index = 1
 
-    for plot in zscore_plots:
+    for plot in data_plots:
         plot2 = plot[0]
         plot2.savefig('stats_plot.svg', format='svg', dpi=DPI, transparent=True)
         plot2 = sg.fromfile('stats_plot.svg')
@@ -471,8 +400,8 @@ def Assemble_Figure(zscore_plots, value_plots, heatmaps, annotation_plot, output
 
 
     # extract colorbar
-    y_move = size_stat_plot * len(zscore_plots) + len_annotation_plot + size_prob_plot
-    plot = zscore_plots[0]
+    y_move = size_stat_plot * len(data_plots) + len_annotation_plot + size_prob_plot
+    plot = data_plots[0]
     colorbar = plot[1]
     colorbar.savefig('colorbar.svg', format='svg', dpi=DPI, transparent=True)
     colorbar = sg.fromfile('colorbar.svg')
@@ -481,19 +410,9 @@ def Assemble_Figure(zscore_plots, value_plots, heatmaps, annotation_plot, output
     fig.append(colorbar)
 
     #export final figure as a svg and pdf
-    # svgfile = "canvis.svg"
     svgfile = output+".svg"
     fig.save(svgfile)
 
-
-    #Uncomment if want to convert to PDF. Note: must have CarioSVG libraries installed
-
-    # pdffile = output + ".pdf"
-    # cairosvg.svg2pdf(url=svgfile, write_to=pdffile)
-
-
-
-    # html_file = open("canvis.html",'w+')
     html_file = open(output+".html",'w+')
     html_str = '<img src="'+output+'.svg" >'
     """
@@ -502,34 +421,44 @@ def Assemble_Figure(zscore_plots, value_plots, heatmaps, annotation_plot, output
     """
     html_file.write(html_str)
     html_file.close()
-
+ 
+def svgToPdfPng(output):
+    img = svg2rlg(output+'.svg')
+    doc = SimpleDocTemplate(output+'.pdf',
+                            pagesize=(8*inch,13.2*inch),
+                            rightMargin=0,
+                            leftMargin=0)
+    docs = []
+    docs.append(img)
+ 
+    doc.build(docs)
+    # renderPDF.drawToFile(img, output+'.pdf',autoSize=0)
+    # renderPM.drawToFile(img, output+'.png', 'PNG')
 
 def main():
 
     # Parse the command line data
     parser = OptionParser()
-    parser.add_option("-l", "--locus_name", dest="locus_name")
-    parser.add_option("-T", "--top_locus_name", dest="top_locus_name", default="NA")
-    parser.add_option("-z", "--zscores", dest="zscores", action='callback', callback=vararg_callback)
-    parser.add_option("-a", "--annotations", dest="annotations")
-    parser.add_option("-s", "--specific_annotations", dest="specific_annotations", action='callback', callback=vararg_callback)
-    parser.add_option("-r", "--ld_name", dest="ld_name", action='callback', callback=vararg_callback)
+    parser.add_option("-l", "--locus_file", dest="locus_file")
+    parser.add_option("-v", "--values", dest="values", action='callback', callback=vararg_callback)
+    parser.add_option("-a", "--annotation_file", dest="annotation_file")
+    parser.add_option("-c", "--annotation_cols", dest="annotation_cols", action='callback', callback=vararg_callback)
+    parser.add_option("-r", "--ld_files", dest="ld_files", action='callback', callback=vararg_callback)
     parser.add_option("-t", "--threshold", dest="threshold", default=0)
     parser.add_option("-g", "--greyscale", dest="greyscale", default='n')
     parser.add_option("-o", "--output", dest="output", default='fig_final')
-    parser.add_option("-i", "--interval", dest="interval", nargs=2)
     parser.add_option("-L", "--large_ld", dest="large_ld", default='n')
     parser.add_option("-H", "--horizontal", dest="horizontal", default='n')
     parser.add_option("-p", "--pval", action='store_true')
+    parser.add_option("-T", "--pthresh", dest="pthresh", default=1)
 
     # extract options
     (options, args) = parser.parse_args()
-    locus_name = options.locus_name
-    top_locus_name = options.top_locus_name
-    zscore_names = options.zscores
-    ld_name = options.ld_name
-    annotations = options.annotations
-    annotation_names = options.specific_annotations
+    locus_file = options.locus_file
+    values = options.values
+    annotation_file = options.annotation_file
+    annotation_cols = options.annotation_cols
+    ld_files = options.ld_files
     threshold = options.threshold
     threshold = int(threshold)
     if threshold < 0 or threshold > 100:
@@ -539,49 +468,59 @@ def main():
         threshold = (threshold)*.01
     greyscale = options.greyscale
     output = options.output
-    interval = options.interval
     large_ld = options.large_ld
     horizontal = options.horizontal
     pval = options.pval
+    pthresh = float(options.pthresh)
+    if pthresh < 0:
+        warnings.warn('Specified pvalue threshold is not valid; threshold is set to inf')
+        pthresh = np.inf
 
     usage = \
     """ Need the following flags specified (*)
         Usage:
         --locus [-l] specify input file with fine-mapping locus (assumed to be ordered by position)
-        --zscores [-z] specific zscores to be plotted
+        --values [-v] specific values to be plotted (column name)
         --annotations [-a]  specify annotation file name
-        --specific_annotations [-s] annotations to be plotted
-        --ld_name [r] specify the ld_matrix file name
+        --annotation_cols [-c] annotations to be plotted
+        --ld_files [r] specify the ld matrix file names
         --threshold [-t] threshold for credible set [default: 0]
         --greyscale [-g] sets colorscheme to greyscale [default: n]
         --output [-o] desired name of output file
-        --interval [-i] designated interval [default: all locations]
-        --large_ld [-L] overrides to produce large LD despite large size
+        --large_ld [-L] overrides to produce large LD despite large size [default: n]
+        --horizontal [-h] overrides to produce large LD despite large size [default: n]
+        --pval [-p] are the values for plotting pvalues? [default: y]
+        --pthresh [-T] threshold over pvalues for plotting [default: inf]
         """
 
     #check if required flags are presnt
-    if(locus_name == None or zscore_names == None):
+    if(locus_file == None or values == None):
         sys.exit(usage)
 
-    if top_locus_name == "NA":
-        [zscores, pos_prob, location, ld, annotations, annotation_names] = Read_Input(locus_name, zscore_names, ld_name, annotations, annotation_names, interval)
-    else:
-        [zscores, pos_prob, location, ld, annotations, annotation_names] = Read_Input_top(locus_name, zscore_names, ld_name, annotations, annotation_names, interval, top_locus_name)
+    [data_toplot, posterior, position, lds, annotation_data, annotation_cols] = Read_Input(locus_file, values, ld_files, annotation_file, annotation_cols, pthresh)
 
-    zscore_plots = Plot_Statistic_Value(location, zscores, zscore_names, greyscale, ld, pval)
-    value_plots = Plot_Position_Value(location, pos_prob, threshold, greyscale)
+    # plot posterior probability
+    posterior_plots = Plot_Position_Value(position, posterior, threshold, greyscale)
 
-    if ld is not None:
-        heatmap = Plot_Heatmap(ld, greyscale, large_ld)
-    else:
-        heatmap = None
-
-    if annotations is not None:
-        annotation_plot = Plot_Annotations(annotation_names, annotations, greyscale)
+    # plot annotations
+    if annotation_data is not None:
+        annotation_plot = Plot_Annotations(annotation_cols, annotation_data, greyscale)
     else:
         annotation_plot = None
 
-    Assemble_Figure(zscore_plots, value_plots, heatmap, annotation_plot, output, horizontal)
+    # plot values vs position, possibly with LD coloring
+    data_plots = Plot_Statistic_Value(position, data_toplot, values, greyscale, lds, pval)
+
+    # plot LD
+    if lds is not None:
+        heatmap = Plot_Heatmap(lds, greyscale, large_ld)
+    else:
+        heatmap = None
+
+    # assemble the whole thing and save
+    Assemble_Figure(data_plots, posterior_plots, heatmap, annotation_plot, output, horizontal)
+
+    svgToPdfPng(output)
 
     #remove extraneous files
     if heatmap is not None:
@@ -592,6 +531,8 @@ def main():
         os.remove('annotation_plot.svg')
     #os.remove("canvis.svg")
     os.remove('value_plots.svg')
+
+    
 
 if __name__ == "__main__":
     main()
