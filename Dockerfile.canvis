@@ -6,4 +6,5 @@ RUN pip install numpy scipy matplotlib seaborn pandas cairosvg==1.0.22 reportlab
 RUN pip install svgutils --user
 
 RUN cd / && \
-	git clone https://github.com/manning-lab/fineMap.git
+	git clone https://github.com/manning-lab/fineMap.git && \
+	echo

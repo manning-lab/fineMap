@@ -144,9 +144,9 @@ task summaryNoLD {
 	command {
 		python /fineMap/paintor/CANVIS.py \
 		-l ${paintor_results} \
-		-z meta_p \
+		-v meta_p \
 		-a ${annotation_out} \
-		-s ${sep=" " anno} \
+		-c ${sep=" " anno} \
 		-o ${interval} \
 		-t 99 \
 		-p \

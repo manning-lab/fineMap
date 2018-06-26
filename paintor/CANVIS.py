@@ -271,7 +271,7 @@ def Plot_Heatmap(lds, greyscale, large_ld):
         n = correlation_matrix.shape
         correlation_matrix = np.square(correlation_matrix)
         if n[0] > 350 and large_ld == 'n':
-            warnings.warn('LD matrix is too large and will not be produced. To override, add "--L y"')
+            warnings.warn('LD matrix is too large and will not be produced. To override, add "-L y"')
             heatmap = None
             bar = None
             ld_arr.append((heatmap, bar))
