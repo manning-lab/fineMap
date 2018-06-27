@@ -400,10 +400,10 @@ def Assemble_Figure(data_plots, posterior_plots, heatmaps, annotation_plot, outp
         size_width = "9in"
         size_height = '9in'
     else:
-        # size_width = "5in"
-        # size_height = '11in'
-        size_width = 5*inch
-        size_height = 5*inch
+        size_width = "5in"
+        size_height = '11in'
+        # size_width = 5*inch
+        # size_height = 5*inch
 
     fig = sg.SVGFigure(size_width, size_height)
     posterior_plots.savefig('value_plots.svg', format='svg', dpi=DPI, transparent=True)
