@@ -111,7 +111,8 @@ task summaryLD {
 		-t 99 \
 		-p \
 		-T ${default="1" pval_thresh} \
-		-L y
+		-L y && \
+		inkscape --export-pdf=${interval}.pdf ${interval}.svg
 	}
 
 	runtime {
@@ -150,7 +151,8 @@ task summaryNoLD {
 		-o ${interval} \
 		-t 99 \
 		-p \
-		-T ${default="1" pval_thresh}
+		-T ${default="1" pval_thresh} && \
+		inkscape --export-pdf=${interval}.pdf ${interval}.svg
 	}
 
 	runtime {
