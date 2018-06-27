@@ -5,6 +5,10 @@ MAINTAINER tmajaria@broadinstitute.org
 RUN pip install numpy scipy matplotlib seaborn pandas cairosvg==1.0.22 reportlab lxml svglib
 RUN pip install svgutils --user
 
+RUN apt-get update && apt-get install inkscape -y
+
 RUN cd / && \
 	git clone https://github.com/manning-lab/fineMap.git && \
-	echo
+	cd fineMap && \
+	git pull origin issue_11 && \
+	echo hi
