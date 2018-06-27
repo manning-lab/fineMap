@@ -18,7 +18,6 @@ import warnings
 import os
 from reportlab.graphics import renderPDF, renderPM
 from reportlab.platypus import SimpleDocTemplate, Image, Indenter
-import Image
 from svglib.svglib import svg2rlg
 from reportlab.lib.pagesizes import letter, A5, inch
 
