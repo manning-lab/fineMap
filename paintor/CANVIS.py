@@ -17,11 +17,18 @@ import svgutils.transform as sg
 import warnings
 import os
 from reportlab.graphics import renderPDF, renderPM
-from reportlab.platypus import SimpleDocTemplate
+from reportlab.platypus import SimpleDocTemplate, Image, Indenter
+import Image
 from svglib.svglib import svg2rlg
 from reportlab.lib.pagesizes import letter, A5, inch
 
-
+class RotatedImage(Image):
+    def wrap(self,availWidth,availHeight):
+        h, w = Image.wrap(self,availHeight,availWidth)
+        return w, h
+    def draw(self):
+        self.canv.rotate(45)
+        Image.draw(self)
 
 def vararg_callback(option, opt_str, value, parser):
     """Function that allows for a variable number of arguments at the command line"""
@@ -310,9 +317,8 @@ def Plot_Heatmap(lds, greyscale, large_ld):
     return ld_arr
 
 def Assemble_PDF(data_plots, posterior_plots, heatmaps, annotation_plot, output):
-    # not sure I need these
-    DPI = 300
-    
+    DPI = 100
+
     # define sizes
     if heatmaps == None:
         horizontal = 'n'
@@ -326,38 +332,68 @@ def Assemble_PDF(data_plots, posterior_plots, heatmaps, annotation_plot, output)
         size_width = 9
         size_height = 11
 
-    # save posterior plot 
-    posterior_plots.savefig('posterior_plots.png', format='png', dpi=DPI, transparent=True)
+    # save posterior plot
+    posterior_plots.set_size_inches(8, 4) 
+    posterior_plots.savefig('posterior_plots.png', format='png', dpi=DPI, transparent=True, bbox_inches='tight')
+
     # save annotation plots
     for i,plot in enumerate(annotation_plot):
-        plot.savefig('annotation_plot'+str(i)+'.png', format='png', dpi=DPI, transparent=True)
+        plot.set_size_inches(6.9, 0.2)
+        plot.savefig('annotation_plot'+str(i)+'.png', format='png', dpi=DPI, transparent=True, bbox_inches='tight')
+
     # save data plot
-    for i,plot in data_plots:
-        data_plots.savefig('value_plots.png', format='png', dpi=DPI, transparent=True)
+    for i,plot in enumerate(data_plots):
+        plot[0].set_size_inches(8, 4) 
+        plot[0].savefig('value_plots'+str(i)+'.png', format='png', dpi=DPI, transparent=True, bbox_inches='tight')
+
     # save heatmap
-    for i,heatmap in heatmaps:
+    for i,heatmap in enumerate(heatmaps):
         plot = heatmap[0]
-        plot.savefig('heatmap+'+str(i)+'.png', format='png', dpi=DPI, transparent=True)
+        plot.set_size_inches(np.sqrt(32), np.sqrt(32)) 
+        plot.savefig('heatmap'+str(i)+'.png', format='png', dpi=DPI, transparent=True, bbox_inches='tight')
 
     # colorbar
     colorbar_h = heatmap[1]
-    colorbar_h.savefig('colorbar_h.png', format='png', dpi=DPI, transparent=True)
+    colorbar_h.set_size_inches(4, .5)
+    colorbar_h.savefig('colorbar_h.png', format='png', dpi=DPI, transparent=True, bbox_inches='tight')
 
-    plot = data_plots[0]
-    colorbar = plot[1]
-    colorbar.savefig('colorbar.png', format='png', dpi=DPI, transparent=True)
+    colorbar = data_plots[0][1]
+    colorbar.set_size_inches(4, .5)
+    colorbar.savefig('colorbar.png', format='png', dpi=DPI, transparent=True, bbox_inches='tight')
 
-    doc = SimpleDocTemplate(output+".pdf", pagesize=(size_width*inch,size_height*inch), rightMargin=72, leftMargin=72, topMargin=72, bottomMargin=18)
+    # start pdf doc
+    doc = SimpleDocTemplate(output+".pdf", pagesize=(10*inch,18*inch+0.5*len(annotation_plot)*inch), rightMargin=0, leftMargin=0, topMargin=0, bottomMargin=0)
 
-    Story = [Image('posterior_plots.png')]
-    ann = [Image('annotation_plot'+str(i)+'.png') for i in len(annotation_plot)]
-    Story.extend(ann)
-    Story.append(Image('value_plots.png'))
+    # list for figures
+    Story = []
+
+    # add posterior plot
+    Story.append(Image('posterior_plots.png'))
+
+    # loop through annotations adding an indent to each one
+    for i in range(0,len(annotation_plot)):
+        Story.append(Indenter(left=.6*inch))
+        Story.append(Image('annotation_plot'+str(i)+'.png'))
+
+    Story.append(Indenter(right=.6*inch))
+
+    # add zscore/pvalue plots
+    Story.extend([Image('value_plots'+str(i)+'.png') for i in range(0,len(data_plots))])
+
+    # add colorbar
     Story.append(Image('colorbar_h.png'))
 
-    ann = [Image('heatmap+'+str(i)+'.png') for i in len(heatmaps)]
-    Story.extend(ann)
+    # add ld plot
+    for i in range(0,len(annotation_plot)):
+        Story.append(Indenter(left=6.9*inch))
+        Story.append(RotatedImage('heatmap'+str(i)+'.png'))
+
+    Story.append(Indenter(right=6.9*inch))
+
+    # add other colorbar
     Story.append(Image('colorbar.png'))
+
+    # build image and save
     doc.build(Story)
     
 
@@ -576,26 +612,14 @@ def main():
 
     # plot LD
     if lds is not None:
-        heatmap = Plot_Heatmap(lds, greyscale, large_ld)
+        heatmaps = Plot_Heatmap(lds, greyscale, large_ld)
     else:
-        heatmap = None
+        heatmaps = None
 
     # assemble the whole thing and save
-    Assemble_Figure(data_plots, posterior_plots, heatmap, annotation_plot, output, horizontal)
+    Assemble_Figure(data_plots, posterior_plots, heatmaps, annotation_plot, output, horizontal)
 
-    svgToPdfPng(output)
-
-    #remove extraneous files
-    if heatmap is not None:
-        os.remove('heatmap.svg')
-        os.remove('colorbar_h.svg')
-    os.remove('stats_plot.svg')
-    if annotation_plot is not None:
-        os.remove('annotation_plot.svg')
-    #os.remove("canvis.svg")
-    os.remove('value_plots.svg')
-
-    
+    Assemble_PDF(data_plots, posterior_plots, heatmaps, annotation_plot, output)    
 
 if __name__ == "__main__":
     main()
