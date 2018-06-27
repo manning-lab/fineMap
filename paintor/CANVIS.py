@@ -317,20 +317,7 @@ def Plot_Heatmap(lds, greyscale, large_ld):
 
 def Assemble_PDF(data_plots, posterior_plots, heatmaps, annotation_plot, output):
     DPI = 100
-
-    # define sizes
-    if heatmaps == None:
-        horizontal = 'n'
-    elif len(heatmaps)>1:
-        horizontal='y'
-
-    if horizontal == 'y':
-        size_width = 11
-        size_height = 9
-    else:
-        size_width = 9
-        size_height = 11
-
+    
     # save posterior plot
     posterior_plots.set_size_inches(8, 4) 
     posterior_plots.savefig('posterior_plots.png', format='png', dpi=DPI, transparent=True, bbox_inches='tight')
