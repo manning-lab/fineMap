@@ -175,8 +175,6 @@ if (meta.file != "NA"){
   write.table("ZSCORE.meta", file = "meta_zcol.txt", row.names = F, col.names = F, sep = "\n", quote = F)
   # zcol.names <- c(zcol.names, "ZSCORE.meta")
   
-  # add meta col to ld names
-  ld.names <- c(ld.names, "LD.all")
   
 } else {
   markers <- markers[order(markers$pos),]
