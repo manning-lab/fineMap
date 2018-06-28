@@ -157,8 +157,8 @@ final <- final[order(final$pos),]
 ## This will process the annotation data
 # first check if we want to use annotations
 if (anno.cols == "NA" || annotation.file == "NA"){
-  anno.cols <- c("dummy_annotation")
-  anno.matrix <- matrix(data = 1, nrow = nrow(markers), ncol = 1)
+  anno.cols <- c("baseline")
+  anno.matrix <- matrix(data = 0, nrow = nrow(markers), ncol = 1)
 } else {
   
   # Load
@@ -230,8 +230,8 @@ write.table(ld, file = paste0(out.pref,".all.LD"), row.names = F, col.names = F,
 write.table(markers[,c("pos","ref","alt","marker")], file = paste0(out.pref,".markers.csv"), row.names = F, col.names = T, sep = ",", quote = F)
 
 # save annotations
-if (anno.cols[1] == "dummy_annotation"){
-  write.table(anno.matrix, file=paste0(out.pref,".annotations"), quote=F, sep=" ", row.names=F, col.names = c("dummy_annotation"))
+if (anno.cols[1] == "baseline"){
+  write.table(anno.matrix, file=paste0(out.pref,".annotations"), quote=F, sep=" ", row.names=F, col.names = c("baseline"))
 } else {
   write.table(anno.matrix, file=paste0(out.pref,".annotations"), quote=F, sep=" ", row.names=F, col.names = state.map$state)  
 }
