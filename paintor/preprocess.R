@@ -145,7 +145,7 @@ if (meta.file != "NA"){
   meta <- meta[,c(meta.marker,"Zscore")]
   
   # get the right sep character
-  for (sepchar in c(":","-","\\.",";")){
+  for (sepchar in c("-","\\.",";")){
     if (length(unlist(regmatches(meta[1,meta.marker], gregexpr(sepchar, meta[1,meta.marker])))) == 3){
       meta[,meta.marker] <- gsub(sepchar, ":", meta[,meta.marker])
       break
