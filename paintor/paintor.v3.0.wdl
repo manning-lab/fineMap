@@ -32,12 +32,12 @@ task preprocess {
 
 	output {
 		Array[File] ld_files = glob("${outpref}.${interval}.LD.*")
-		File ld_avg = "${outpref}.${interval}.LD.all"
+		File ld_avg = "${outpref}.${interval}.all.LD"
 		File variant_list = "${outpref}.${interval}.markers.csv"
 		File annotation_out = "${outpref}.${interval}.annotations"
 		File assoc_out = "${outpref}.${interval}"
 		File zcol_names = "zcol.txt"
-		String meta_zcol = read_lines("meta_zcol.txt")
+		String meta_zcol = select_first(read_lines("meta_zcol.txt"))
 		File ld_names = "ld.txt"
 		File anno_names = "anno.txt"
 		File out_message = "out_message.txt"

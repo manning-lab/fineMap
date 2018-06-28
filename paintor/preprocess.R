@@ -285,7 +285,7 @@ if (sum(na.flags) > 0){
 }
 
 # save it
-write.table(ld, file = paste0(out.pref,".LD.all"), row.names = F, col.names = F, sep = " ", quote = F)
+write.table(ld, file = paste0(out.pref,".all.LD"), row.names = F, col.names = F, sep = " ", quote = F)
 ##
 
 # write out the markers
