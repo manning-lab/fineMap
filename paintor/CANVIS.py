@@ -382,28 +382,28 @@ def Assemble_PDF(data_plots, posterior_plots, heatmaps, annotation_plot, output)
     # build image and save
     doc.build(Story)
     
-
 def Assemble_Figure(data_plots, posterior_plots, heatmaps, annotation_plot, output, horizontal):
     """Assemble everything together and return svg and pdf of final figure"""
     DPI = 300
     size_prob_plot = 215
     size_stat_plot = 225
     size_annotation_plot = 30
-    size_heatmap = 200
+    size_heatmap = 225
 
     if heatmaps == None:
         horizontal = 'n'
-    elif len(heatmaps)>1:
-        horizontal='y'
-
-    if horizontal == 'y':
-        size_width = "9in"
-        size_height = '9in'
-    else:
         size_width = "5in"
         size_height = '11in'
-        # size_width = 5*inch
-        # size_height = 5*inch
+    elif len(heatmaps)>1:
+        horizontal='y'
+        size_width = '9in'
+        size_height = str(6+3*len(heatmaps))+'in'
+    elif horizontal == 'y':
+        size_width = '9in'
+        size_height = '9in'
+    else:
+        size_width = '5in'
+        size_height = '11in'
 
     fig = sg.SVGFigure(size_width, size_height)
     posterior_plots.savefig('value_plots.svg', format='svg', dpi=DPI, transparent=True)
@@ -428,8 +428,8 @@ def Assemble_Figure(data_plots, posterior_plots, heatmaps, annotation_plot, outp
 
             #transform and add heatmap figure; must be added first for correct layering
             if horizontal=='y':
-                y_scale = len_annotation_plot + size_prob_plot +size_heatmap*heatmap_count+ 75
-                plot4.moveto(375,y_scale, scale=1.40)
+                y_scale = len_annotation_plot + size_prob_plot +size_heatmap*heatmap_count + 60 #75
+                plot4.moveto(375, y_scale, scale=1.40)
                 plot4.rotate(-45, 0, 0)
                 fig.append(plot4)
                 x_move = 510
@@ -528,7 +528,7 @@ def main():
     parser.add_option("-o", "--output", dest="output", default='fig_final')
     parser.add_option("-L", "--large_ld", dest="large_ld", default='n')
     parser.add_option("-H", "--horizontal", dest="horizontal", default='n')
-    parser.add_option("-p", "--pval", action='store_true')
+    parser.add_option("-p", "--pval", dest="pval", default=False)
     parser.add_option("-T", "--pthresh", dest="pthresh", default=1)
 
     # extract options
@@ -567,8 +567,8 @@ def main():
         --greyscale [-g] sets colorscheme to greyscale [default: n]
         --output [-o] desired name of output file
         --large_ld [-L] overrides to produce large LD despite large size [default: n]
-        --horizontal [-h] overrides to produce large LD despite large size [default: n]
-        --pval [-p] are the values for plotting pvalues? [default: y]
+        --horizontal [-H] overrides to produce large LD despite large size [default: n]
+        --pval [-p] are the values for plotting pvalues? [default: False]
         --pthresh [-T] threshold over pvalues for plotting [default: inf]
         """
 

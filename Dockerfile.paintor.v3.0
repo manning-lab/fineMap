@@ -21,5 +21,4 @@ RUN echo "install.packages(c('data.table','dplyr','tidyr','metap'), repos='http:
 	rm install.R
 
 RUN cd / && \
-	git clone https://github.com/manning-lab/fineMap.git && \
-	echo
+	git clone https://github.com/manning-lab/fineMap.git
