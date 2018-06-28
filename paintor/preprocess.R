@@ -152,6 +152,13 @@ if (meta.file != "NA"){
     }
   }
   
+  # make sure chr is in the same format
+  if (startsWith(meta[1,meta.marker],"chr") && !(startsWith(chr, "chr"))){
+    meta[,meta.marker] <- gsub("chr", "", meta[,meta.marker])
+  } else if (!(startsWith(meta[1,meta.marker],"chr")) && startsWith(chr, "chr")){
+    meta[,meta.marker] <- gsub("^", "chr", meta[,meta.marker])
+  }
+  
   # get the colname right
   names(meta)[2] <- "ZSCORE.meta"
   
@@ -165,17 +172,14 @@ if (meta.file != "NA"){
   markers <- markers[order(markers$pos),]
   
   # add meta col to zcol names
-  zcol.names <- c(zcol.names, "ZSCORE.meta")
+  write.table("ZSCORE.meta", file = "meta_zcol.txt", row.names = F, col.names = F, sep = "\n", quote = F)
+  # zcol.names <- c(zcol.names, "ZSCORE.meta")
   
-  # get final list of variants+scores
-  final <- markers[,c("marker","chr","pos",zcol.names)]
+  # add meta col to ld names
+  ld.names <- c(ld.names, "LD.all")
   
-  # rename to fit paintor input
-  names(final)[2] <- "CHR"
 } else {
   markers <- markers[order(markers$pos),]
-  final <- markers[,c("marker","chr","pos",zcol.names)]
-  names(final)[2] <- "CHR"
 }
 ##
 
@@ -184,8 +188,8 @@ if (meta.file != "NA"){
 if (anno.cols == "NA" || annotation.file == "NA"){
   anno.cols <- c("baseline")
   anno.matrix <- matrix(data = 0, nrow = nrow(markers), ncol = 1)
+  markers$state <- "baseline"
 } else {
-  
   # Load
   anno.data <- read.table(annotation.file, sep="\t", header=F, as.is=T)
   
@@ -227,6 +231,20 @@ if (anno.cols == "NA" || annotation.file == "NA"){
   }
 }
 ##
+
+##
+# get final list of variants+scores
+if (meta.file != "NA"){
+  final <- markers[,c("marker","chr","pos",zcol.names,"ZSCORE.meta","state")]
+} else {
+  final <- markers[,c("marker","chr","pos",zcol.names,"state")]
+}
+
+
+# rename to fit paintor input
+names(final)[2] <- "CHR"
+##
+
 ## Now calculate the LD matricies
 # reset filter (not sure if this is necessary)
 seqResetFilter(gds.data)
@@ -267,7 +285,7 @@ if (sum(na.flags) > 0){
 }
 
 # save it
-write.table(ld, file = paste0(out.pref,".all.LD"), row.names = F, col.names = F, sep = " ", quote = F)
+write.table(ld, file = paste0(out.pref,".LD.all"), row.names = F, col.names = F, sep = " ", quote = F)
 ##
 
 # write out the markers
@@ -294,7 +312,7 @@ write.table(ld.names, file = "ld.txt", row.names = F, col.names = F, sep = "\n",
 write.table(anno.cols, file = "anno.txt", row.names = F, col.names = F, sep = "\n", quote = F)
 
 # export output message
-write.table(list(outmessage), file="out_message.txt", sep=" ", row.names=F, quote=F)
+write.table(outmessage, file="out_message.txt", sep=" ", row.names=F,col.names=F, quote=F)
 
 # close gds
 seqClose(gds.data)

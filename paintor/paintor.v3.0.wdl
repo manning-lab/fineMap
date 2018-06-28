@@ -32,11 +32,12 @@ task preprocess {
 
 	output {
 		Array[File] ld_files = glob("${outpref}.${interval}.LD.*")
-		File ld_avg = "${outpref}.${interval}.all.LD"
+		File ld_avg = "${outpref}.${interval}.LD.all"
 		File variant_list = "${outpref}.${interval}.markers.csv"
 		File annotation_out = "${outpref}.${interval}.annotations"
 		File assoc_out = "${outpref}.${interval}"
 		File zcol_names = "zcol.txt"
+		String meta_zcol = read_lines("meta_zcol.txt")
 		File ld_names = "ld.txt"
 		File anno_names = "anno.txt"
 		File out_message = "out_message.txt"
@@ -99,6 +100,8 @@ task summaryLD {
 	File zcol_names
 	Array[File] ld_files
 	Float? pval_thresh
+	String meta_ld_file
+	String meta_zcol
 
 	Int memory
 	Int disk
@@ -110,15 +113,15 @@ task summaryLD {
 	command {
 		python /fineMap/paintor/CANVIS.py \
 		-l ${paintor_results} \
-		-v ${sep=" " zcol} \
+		-v ${sep=" " zcol} ${meta_zcol} \
 		-a ${annotation_out} \
 		-c ${sep=" " anno} \
-		-r ${sep=" " ld_files} \
+		-r ${sep=" " ld_files} ${meta_ld_file} \
 		-o ${outpref}.${interval} \
 		-t 99 \
 		-T ${default="1" pval_thresh} \
 		-L y && \
-		inkscape --export-pdf=${outpref}.${interval}.pdf ${outpref}.${interval}.svg
+		inkscape ${outpref}.${interval}.svg -e ${outpref}.${interval}.png
 	}
 
 	runtime {
@@ -130,7 +133,7 @@ task summaryLD {
 	output {
 		File html = "${outpref}.${interval}.html"
 		File svg = "${outpref}.${interval}.svg"
-		File pdf = "${outpref}.${interval}.pdf"
+		File pdf = "${outpref}.${interval}.png"
 	}
 
 }
@@ -143,6 +146,7 @@ task summaryNoLD {
 	File anno_names
 	File zcol_names
 	Float? pval_thresh
+	String meta_zcol
 
 	Int memory
 	Int disk
@@ -154,13 +158,13 @@ task summaryNoLD {
 	command {
 		python /fineMap/paintor/CANVIS.py \
 		-l ${paintor_results} \
-		-v ${sep=" " zcol} \
+		-v ${sep=" " zcol} ${meta_zcol} \
 		-a ${annotation_out} \
 		-c ${sep=" " anno} \
 		-o ${outpref}.${interval} \
 		-t 99 \
 		-T ${default="1" pval_thresh} && \
-		inkscape --export-pdf=${outpref}.${interval}.pdf ${outpref}.${interval}.svg
+		inkscape ${outpref}.${interval}.svg -e ${outpref}.${interval}.png
 	}
 
 	runtime {
@@ -172,7 +176,7 @@ task summaryNoLD {
 	output {
 		File html = "${outpref}.${interval}.html"
 		File svg = "${outpref}.${interval}.svg"
-		File pdf = "${outpref}.${interval}.pdf"
+		File pdf = "${outpref}.${interval}.png"
 	}
 
 }
@@ -248,12 +252,12 @@ workflow group_assoc_wf {
 
 		if (plot_ld) {
 			call summaryLD {
-				input: outpref = this_outpref, interval_string = this_interval_pair.right, paintor_results = runPaintor.results, annotation_out = preprocess.annotation_out, anno_names = preprocess.anno_names, zcol_names = preprocess.zcol_names, ld_files = preprocess.ld_files, pval_thresh = this_pval_thresh, memory = summary_memory, disk = this_disk
+				input: outpref = this_outpref, interval_string = this_interval_pair.right, paintor_results = runPaintor.results, annotation_out = preprocess.annotation_out, anno_names = preprocess.anno_names, zcol_names = preprocess.zcol_names, meta_zcol = preprocess.meta_zcol, ld_files = preprocess.ld_files, pval_thresh = this_pval_thresh, meta_ld_file = preprocess.ld_avg, memory = summary_memory, disk = this_disk
 			}	
 		}
 		if (!plot_ld){
 			call summaryNoLD {
-				input: outpref = this_outpref, interval_string = this_interval_pair.right, paintor_results = runPaintor.results, annotation_out = preprocess.annotation_out, anno_names = preprocess.anno_names, zcol_names = preprocess.zcol_names, pval_thresh = this_pval_thresh, memory = summary_memory, disk = this_disk
+				input: outpref = this_outpref, interval_string = this_interval_pair.right, paintor_results = runPaintor.results, annotation_out = preprocess.annotation_out, anno_names = preprocess.anno_names, zcol_names = preprocess.zcol_names, meta_zcol = preprocess.meta_zcol, pval_thresh = this_pval_thresh, memory = summary_memory, disk = this_disk
 			}	
 		}
 		
