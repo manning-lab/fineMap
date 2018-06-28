@@ -100,7 +100,7 @@ task summaryLD {
 	File zcol_names
 	Array[File] ld_files
 	Float? pval_thresh
-	String meta_ld_file
+	File meta_ld_file
 	String meta_zcol
 
 	Int memory
@@ -121,7 +121,7 @@ task summaryLD {
 		-t 99 \
 		-T ${default="1" pval_thresh} \
 		-L y && \
-		inkscape ${outpref}.${interval}.svg -e ${outpref}.${interval}.png
+		inkscape ${outpref}.${interval}.svg -E ${outpref}.${interval}.eps
 	}
 
 	runtime {
@@ -133,7 +133,7 @@ task summaryLD {
 	output {
 		File html = "${outpref}.${interval}.html"
 		File svg = "${outpref}.${interval}.svg"
-		File pdf = "${outpref}.${interval}.png"
+		File pdf = "${outpref}.${interval}.eps"
 	}
 
 }
