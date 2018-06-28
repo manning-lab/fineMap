@@ -183,7 +183,6 @@ if (anno.cols == "NA" || annotation.file == "NA"){
   # now get the right states for each variant
   markers.ovp <- markers.gr[queryHits(markers.ovp.ids),]
   markers.ovp$state <- anno.data.gr[subjectHits(markers.ovp.ids),]$state
-  markers.ovp <- unique(markers.ovp)
   
   # back to data frame
   markers <- merge(markers, as.data.frame(markers.ovp)[,c("seqnames", "start","ref","alt","state")], by.x = c("chr", "pos","ref","alt"), by.y = c("seqnames", "start","ref","alt"), all.x = T)

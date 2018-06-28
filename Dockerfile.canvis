@@ -11,4 +11,4 @@ RUN cd / && \
 	git clone https://github.com/manning-lab/fineMap.git && \
 	cd fineMap && \
 	git pull origin issue_11 && \
-	echo hi
+	echo hitherehi

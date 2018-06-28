@@ -382,7 +382,6 @@ def Assemble_PDF(data_plots, posterior_plots, heatmaps, annotation_plot, output)
     # build image and save
     doc.build(Story)
     
-
 def Assemble_Figure(data_plots, posterior_plots, heatmaps, annotation_plot, output, horizontal):
     """Assemble everything together and return svg and pdf of final figure"""
     DPI = 300
