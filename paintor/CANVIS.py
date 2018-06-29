@@ -518,7 +518,7 @@ def Assemble_Figure(data_plots, posterior_plots, heatmaps, annotation_plot, outp
         '" height="',
         size_height,
         '">'])
-    command = "sed -i \'1s@.*@"+firstline+"@\' "+output+".svg\n"
+    command = "sed -i \'2s@.*@"+firstline+"@\' "+output+".svg\n"
     with open('secondline.txt','w') as f:
         f.write(command)
  

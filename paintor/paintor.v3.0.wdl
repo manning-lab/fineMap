@@ -165,6 +165,7 @@ task summaryNoLD {
 		-o ${outpref}.${interval} \
 		-t 99 \
 		-T ${default="1" pval_thresh} && \
+		sh secondline.txt && \
 		cairosvg -f png -o ${outpref}.${interval}.png ${outpref}.${interval}.svg
 	}
 
@@ -184,10 +185,15 @@ task summaryNoLD {
 
 task catResults {
 	String outpref
+	String interval_string
 	Array[File] all_results
+	Array[File] all_png
+
+	String interval = sub(interval_string, "\t", ".")
 
 	command {
-		R --vanilla --args ${sep="," all_results} ${outpref} < /fineMap/paintor/catResults.R
+		R --vanilla --args ${sep="," all_results} ${outpref}${interval} < /fineMap/paintor/catResults.R && \
+		ls | grep .png | zip -@ ${outpref}${interval}.plots.zip
 	}
 
 	runtime {
@@ -197,11 +203,11 @@ task catResults {
 	}
 
 	output {
-		File cat_results = "${outpref}.top.variants.csv"
+		File top_variants = "${outpref}.top.variants.csv"
+		File all_plots = "${outpref}${interval}.plots.zip"
 	}
 
 }
-
 
 workflow group_assoc_wf {
 	# File this_gds_list
