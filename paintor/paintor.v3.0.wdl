@@ -121,6 +121,7 @@ task summaryLD {
 		-t 99 \
 		-T ${default="1" pval_thresh} \
 		-L y && \
+		sh secondline.txt && \
 		cairosvg -f png -o ${outpref}.${interval}.png ${outpref}.${interval}.svg
 	}
 

@@ -20,6 +20,7 @@ from reportlab.graphics import renderPDF, renderPM
 from reportlab.platypus import SimpleDocTemplate, Image, Indenter
 from svglib.svglib import svg2rlg
 from reportlab.lib.pagesizes import letter, A5, inch
+import subprocess
 
 class RotatedImage(Image):
     def wrap(self,availWidth,availHeight):
@@ -506,6 +507,20 @@ def Assemble_Figure(data_plots, posterior_plots, heatmaps, annotation_plot, outp
     """
     html_file.write(html_str)
     html_file.close()
+
+    firstline = "".join([
+        '<svg xmlns:xlink="http://www.w3.org/1999/xlink" xmlns="http://www.w3.org/2000/svg" version="1.1" width="',
+        size_width,
+        '" viewBox="0 0 ',
+        size_width.replace("px",""),
+        ' ',
+        size_height.replace("px",""),
+        '" height="',
+        size_height,
+        '">'])
+    command = "sed -i \'1s@.*@"+firstline+"@\' "+output+".svg\n"
+    with open('secondline.txt','w') as f:
+        f.write(command)
  
 def svgToPdfPng(output):
     img = svg2rlg(output+'.svg')
@@ -615,7 +630,8 @@ def main():
     # assemble the whole thing and save
     Assemble_Figure(data_plots, posterior_plots, heatmaps, annotation_plot, output, horizontal)
 
-    # Assemble_PDF(data_plots, posterior_plots, heatmaps, annotation_plot, output)    
+    # fix first line of svg..
+
 
 if __name__ == "__main__":
     main()

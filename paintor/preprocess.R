@@ -287,7 +287,7 @@ write.table(ld, file = paste0(out.pref,".all.LD"), row.names = F, col.names = F,
 ##
 
 # write out the markers
-write.table(markers[,c("pos","ref","alt","marker")], file = paste0(out.pref,".markers.csv"), row.names = F, col.names = T, sep = ",", quote = F)
+write.table(markers[,c("pos","ref","alt","marker","state")], file = paste0(out.pref,".markers.csv"), row.names = F, col.names = T, sep = ",", quote = F)
 
 # save annotations
 if (anno.cols[1] == "baseline"){
