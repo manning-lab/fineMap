@@ -392,18 +392,26 @@ def Assemble_Figure(data_plots, posterior_plots, heatmaps, annotation_plot, outp
 
     if heatmaps == None:
         horizontal = 'n'
-        size_width = "5in"
-        size_height = '11in'
+        # size_width = "5in"
+        # size_height = '11in'
+        size_width = "360px"
+        size_height = "792px"
     elif len(heatmaps)>1:
         horizontal='y'
-        size_width = '9in'
-        size_height = str(6+3*len(heatmaps))+'in'
+        # size_width = '9in'
+        # size_height = str(6+3*len(heatmaps))+'in'
+        size_width = "792px"
+        size_height = str(432+72*len(heatmaps))+"px"
     elif horizontal == 'y':
-        size_width = '9in'
-        size_height = '9in'
+        # size_width = '9in'
+        # size_height = '9in'
+        size_width = "648px"
+        size_height = "648px"
     else:
-        size_width = '5in'
-        size_height = '11in'
+        # size_width = '5in'
+        # size_height = '11in'
+        size_width = "360px"
+        size_height = "792px"
 
     fig = sg.SVGFigure(size_width, size_height)
     posterior_plots.savefig('value_plots.svg', format='svg', dpi=DPI, transparent=True)

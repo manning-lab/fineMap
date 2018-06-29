@@ -121,7 +121,7 @@ task summaryLD {
 		-t 99 \
 		-T ${default="1" pval_thresh} \
 		-L y && \
-		inkscape ${outpref}.${interval}.svg -E ${outpref}.${interval}.eps
+		cairosvg -f png -o ${outpref}.${interval}.png ${outpref}.${interval}.svg
 	}
 
 	runtime {
@@ -133,7 +133,7 @@ task summaryLD {
 	output {
 		File html = "${outpref}.${interval}.html"
 		File svg = "${outpref}.${interval}.svg"
-		File pdf = "${outpref}.${interval}.eps"
+		File pdf = "${outpref}.${interval}.png"
 	}
 
 }
@@ -164,7 +164,7 @@ task summaryNoLD {
 		-o ${outpref}.${interval} \
 		-t 99 \
 		-T ${default="1" pval_thresh} && \
-		inkscape ${outpref}.${interval}.svg -e ${outpref}.${interval}.png
+		cairosvg -f png -o ${outpref}.${interval}.png ${outpref}.${interval}.svg
 	}
 
 	runtime {
