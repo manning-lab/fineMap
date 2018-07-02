@@ -9,7 +9,4 @@ RUN apt-get update && apt-get install python3 python3-pip -y
 RUN pip3 install cairosvg
 
 RUN cd / && \
-	git clone https://github.com/manning-lab/fineMap.git && \
-	cd fineMap && \
-	git pull origin issue_15 && \
-	echo HIHI
+	git clone https://github.com/manning-lab/fineMap.git
