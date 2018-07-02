@@ -13,11 +13,13 @@ interval <- unlist(strsplit(input_args[1], ":"))
 gds.file <- input_args[2]
 sample.ids.files <- unlist(strsplit(input_args[3],","))
 assoc.files <- unlist(strsplit(input_args[4],","))
-annotation.file <- input_args[5]
-anno.cols <- unlist(strsplit(input_args[6],","))
-mac <- as.numeric(input_args[7])
-pval.col <- input_args[8]
-effect.col <- input_args[9]
+meta.file <- input_args[5]
+annotation.file <- input_args[6]
+anno.cols <- unlist(strsplit(input_args[7],","))
+mac <- as.numeric(input_args[8])
+pval.col <- input_args[9]
+effect.col <- input_args[10]
+out.pref <- input_args[11]
 
 ## # these are from the DCC pipeline, credit -> S. Gogarten 
 .variantDF <- function(gds) {
@@ -48,7 +50,7 @@ print(start)
 print(end)
 
 # create output prefix
-out.pref <- paste(chr, start, end, sep = ".")
+out.pref <- paste(out.pref, chr, start, end, sep = ".")
 print(out.pref)
 
 # Load sample ids
@@ -112,46 +114,71 @@ markers$marker <- paste(markers$chr, markers$pos, markers$ref, markers$alt, sep=
 ##
 
 ## Now get the zscores
-# Matrix to store flags for pvalues under threshold
-pval.flags <- data.frame(marker = markers$marker)
-
 # calculate z
 for (gind in seq(1,length(assoc.files))){
   c.assoc <- fread(assoc.files[gind], data.table = F, stringsAsFactors = F)[,c("chr","pos","ref","alt",pval.col,effect.col)]
   c.assoc$marker <- paste(c.assoc$chr, c.assoc$pos, c.assoc$ref, c.assoc$alt, sep = ":")
   c.assoc <- c.assoc[c.assoc$marker %in% markers$marker, ]
-  pval.flags <- merge(pval.flags, c.assoc[,c("marker",pval.col)], by.x = "marker", by.y = "marker")
-  colnames(pval.flags)[gind+1] <- paste0("p.",gind)
   c.assoc$Z <- abs(qnorm(c.assoc[, pval.col]/2))*sign(c.assoc[,effect.col])
   c.assoc <- c.assoc[,c("marker","Z")]
   colnames(c.assoc) <- c("marker", zcol.names[gind])
   markers <- merge(markers, c.assoc, by.x = "marker", by.y = "marker", all.x = T)
 }
 
-row.names(pval.flags) <- pval.flags$marker
-if (ncol(pval.flags) == 2){
-  cname <- names(pval.flags)[2]
-  pval.flags <- data.frame(V1 = pval.flags[,2], row.names = pval.flags$marker)
-  names(pval.flags) <- cname
-} else {
-  pval.flags <- pval.flags[,names(pval.flags) != "marker"]  
-}
-
 # remove any rows with NAs
 markers <- na.omit(markers)
 
-# final assoc to save
-final <- markers[,c("marker","chr","pos",zcol.names)]
-names(final)[2] <- "CHR"
-
 # add meta p-value to final output
-library(metap)
-pval.flags$meta <- apply(pval.flags,1,function(x){keep <- !is.na(x) ;if(sum(keep)==0) {return(NA)} else if (sum(keep)==1){return(x[keep])}; logitp(x[keep])$p})
-pval.flags <- data.frame(marker = row.names(pval.flags), meta_p = pval.flags$meta)
-
-# merge back with final
-final <- merge(final, pval.flags[,c("marker","meta_p")], by.x = "marker", by.y = "marker", all.x = T)
-final <- final[order(final$pos),]
+# load meta results, must have columns named marker (chr:pos:ref:alt) and Zscore
+if (meta.file != "NA"){
+  meta <- fread(meta.file, data.table = F, stringsAsFactors = F)#[,c("marker","Zscore")] 
+  
+  # get the right colname
+  if ("marker" %in% names(meta)){
+    meta.marker <- "marker"
+  } else {
+    # this is for metal output
+    meta.marker <- "MarkerName"
+  }
+  
+  # only take the cols that we need
+  meta <- meta[,c(meta.marker,"Zscore")]
+  
+  # get the right sep character
+  for (sepchar in c("-","\\.",";")){
+    if (length(unlist(regmatches(meta[1,meta.marker], gregexpr(sepchar, meta[1,meta.marker])))) == 3){
+      meta[,meta.marker] <- gsub(sepchar, ":", meta[,meta.marker])
+      break
+    }
+  }
+  
+  # make sure chr is in the same format
+  if (startsWith(meta[1,meta.marker],"chr") && !(startsWith(chr, "chr"))){
+    meta[,meta.marker] <- gsub("chr", "", meta[,meta.marker])
+  } else if (!(startsWith(meta[1,meta.marker],"chr")) && startsWith(chr, "chr")){
+    meta[,meta.marker] <- gsub("^", "chr", meta[,meta.marker])
+  }
+  
+  # get the colname right
+  names(meta)[2] <- "ZSCORE.meta"
+  
+  # merge with markers
+  markers <- merge(markers, meta, by.x = "marker", by.y = meta.marker, all.x = T)
+  
+  # remove any nas
+  markers <- na.omit(markers)
+  
+  # order based on position
+  markers <- markers[order(markers$pos),]
+  
+  # add meta col to zcol names
+  write.table("ZSCORE.meta", file = "meta_zcol.txt", row.names = F, col.names = F, sep = "\n", quote = F)
+  # zcol.names <- c(zcol.names, "ZSCORE.meta")
+  
+  
+} else {
+  markers <- markers[order(markers$pos),]
+}
 ##
 
 ## This will process the annotation data
@@ -159,8 +186,8 @@ final <- final[order(final$pos),]
 if (anno.cols == "NA" || annotation.file == "NA"){
   anno.cols <- c("baseline")
   anno.matrix <- matrix(data = 0, nrow = nrow(markers), ncol = 1)
+  markers$state <- "baseline"
 } else {
-  
   # Load
   anno.data <- read.table(annotation.file, sep="\t", header=F, as.is=T)
   
@@ -202,15 +229,40 @@ if (anno.cols == "NA" || annotation.file == "NA"){
   }
 }
 ##
+
+##
+# get final list of variants+scores
+if (meta.file != "NA"){
+  final <- markers[,c("marker","chr","pos",zcol.names,"ZSCORE.meta","state")]
+} else {
+  final <- markers[,c("marker","chr","pos",zcol.names,"state")]
+}
+
+
+# rename to fit paintor input
+names(final)[2] <- "CHR"
+##
+
 ## Now calculate the LD matricies
 # reset filter (not sure if this is necessary)
 seqResetFilter(gds.data)
+
+# outmessage for warning if NA in ld
+outmessage <- "No NA's in LD matrix detected."
+
+# place to hold flags for na
+na.flags <- rep(0,length(assoc.files)+1)
 
 for (gind in seq(1,length(sample.ids))){
   # calculate LD
   ld <- data.frame(snpgdsLDMat(gds.data, method = "corr", slide = 0, sample.id = sample.ids[[gind]], snp.id = markers$variant.id)$LD)
   ld <- ld * ld
-  ld[is.na(ld)] <- 0
+  
+  # output message if we have some NAs
+  if (any(is.na(ld))){
+    na.flags[gind] <- 1
+    ld[is.na(ld)] <- 0
+  }
   
   # save it
   write.table(ld, file = paste0(out.pref,".",ld.names[gind]), row.names = F, col.names = F, sep = " ", quote = F)
@@ -220,14 +272,22 @@ for (gind in seq(1,length(sample.ids))){
 all.sample.ids <- do.call(c, sample.ids)
 ld <- data.frame(snpgdsLDMat(gds.data, method = "corr", slide = 0, sample.id = all.sample.ids, snp.id = markers$variant.id)$LD)
 ld <- ld * ld
-ld[is.na(ld)] <- 0
+if (any(is.na(ld))){
+  na.flags[length(na.flags)] <- 1
+  ld[is.na(ld)] <- 0
+}
+
+if (sum(na.flags) > 0){
+  inds <- which(na.flags == 1)
+  outmessage <- paste("NA's detected in LD matrices: ", paste(inds,collapse = ", "),". Replacing NA values with 0", sep = "")
+}
 
 # save it
 write.table(ld, file = paste0(out.pref,".all.LD"), row.names = F, col.names = F, sep = " ", quote = F)
 ##
 
 # write out the markers
-write.table(markers[,c("pos","ref","alt","marker")], file = paste0(out.pref,".markers.csv"), row.names = F, col.names = T, sep = ",", quote = F)
+write.table(markers[,c("pos","ref","alt","marker","state")], file = paste0(out.pref,".markers.csv"), row.names = F, col.names = T, sep = ",", quote = F)
 
 # save annotations
 if (anno.cols[1] == "baseline"){
@@ -248,6 +308,9 @@ write.table(ld.names, file = "ld.txt", row.names = F, col.names = F, sep = "\n",
 
 # export the annotation names
 write.table(anno.cols, file = "anno.txt", row.names = F, col.names = F, sep = "\n", quote = F)
+
+# export output message
+write.table(outmessage, file="out_message.txt", sep=" ", row.names=F,col.names=F, quote=F)
 
 # close gds
 seqClose(gds.data)

@@ -20,6 +20,7 @@ from reportlab.graphics import renderPDF, renderPM
 from reportlab.platypus import SimpleDocTemplate, Image, Indenter
 from svglib.svglib import svg2rlg
 from reportlab.lib.pagesizes import letter, A5, inch
+import subprocess
 
 class RotatedImage(Image):
     def wrap(self,availWidth,availHeight):
@@ -392,18 +393,26 @@ def Assemble_Figure(data_plots, posterior_plots, heatmaps, annotation_plot, outp
 
     if heatmaps == None:
         horizontal = 'n'
-        size_width = "5in"
-        size_height = '11in'
+        # size_width = "5in"
+        # size_height = '11in'
+        size_width = "360px"
+        size_height = "792px"
     elif len(heatmaps)>1:
         horizontal='y'
-        size_width = '9in'
-        size_height = str(6+3*len(heatmaps))+'in'
-    elif horizontal == 'y':
-        size_width = '9in'
-        size_height = '9in'
+        # size_width = '9in'
+        # size_height = str(6+3*len(heatmaps))+'in'
+        size_width = "792px"
+        size_height = str(432+4*72*len(heatmaps))+"px"
+    elif horizontal == 'y' and len(heatmaps) <= 1:
+        # size_width = '9in'
+        # size_height = '9in'
+        size_width = "648px"
+        size_height = "648px"
     else:
-        size_width = '5in'
-        size_height = '11in'
+        # size_width = '5in'
+        # size_height = '11in'
+        size_width = "360px"
+        size_height = "792px"
 
     fig = sg.SVGFigure(size_width, size_height)
     posterior_plots.savefig('value_plots.svg', format='svg', dpi=DPI, transparent=True)
@@ -498,6 +507,20 @@ def Assemble_Figure(data_plots, posterior_plots, heatmaps, annotation_plot, outp
     """
     html_file.write(html_str)
     html_file.close()
+
+    firstline = "".join([
+        '<svg xmlns:xlink="http://www.w3.org/1999/xlink" xmlns="http://www.w3.org/2000/svg" version="1.1" width="',
+        size_width,
+        '" viewBox="0 0 ',
+        size_width.replace("px",""),
+        ' ',
+        size_height.replace("px",""),
+        '" height="',
+        size_height,
+        '">'])
+    command = "sed -i \'2s@.*@"+firstline+"@\' "+output+".svg\n"
+    with open('secondline.txt','w') as f:
+        f.write(command)
  
 def svgToPdfPng(output):
     img = svg2rlg(output+'.svg')
@@ -607,7 +630,8 @@ def main():
     # assemble the whole thing and save
     Assemble_Figure(data_plots, posterior_plots, heatmaps, annotation_plot, output, horizontal)
 
-    # Assemble_PDF(data_plots, posterior_plots, heatmaps, annotation_plot, output)    
+    # fix first line of svg..
+
 
 if __name__ == "__main__":
     main()

@@ -2,7 +2,7 @@ FROM r-base:3.5.0
 
 MAINTAINER tmajaria@broadinstitute.org
 
-RUN apt-get update && apt-get -y install build-essential libcurl4-openssl-dev git
+RUN apt-get update && apt-get -y install build-essential libcurl4-openssl-dev git zip
 
 RUN git clone --branch 3.0 https://github.com/gkichaev/PAINTOR_V3.0.git
 
