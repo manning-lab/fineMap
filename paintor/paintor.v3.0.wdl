@@ -134,7 +134,7 @@ task summaryLD {
 	output {
 		File html = "${outpref}.${interval}.html"
 		File svg = "${outpref}.${interval}.svg"
-		File pdf = "${outpref}.${interval}.png"
+		File png = "${outpref}.${interval}.png"
 	}
 
 }
@@ -178,22 +178,20 @@ task summaryNoLD {
 	output {
 		File html = "${outpref}.${interval}.html"
 		File svg = "${outpref}.${interval}.svg"
-		File pdf = "${outpref}.${interval}.png"
+		File png = "${outpref}.${interval}.png"
 	}
 
 }
 
 task catResults {
 	String outpref
-	String interval_string
 	Array[File] all_results
-	Array[File] all_png
-
-	String interval = sub(interval_string, "\t", ".")
+	Array[File?] all_png
 
 	command {
-		R --vanilla --args ${sep="," all_results} ${outpref}${interval} < /fineMap/paintor/catResults.R && \
-		ls | grep .png | zip -@ ${outpref}${interval}.plots.zip
+		R --vanilla --args ${sep="," all_results} ${outpref} < /fineMap/paintor/catResults.R && \
+		mv -t ./ ${sep = " " all_png} && \
+		ls | grep .png | zip -@ ${outpref}.plots.zip
 	}
 
 	runtime {
@@ -204,7 +202,7 @@ task catResults {
 
 	output {
 		File top_variants = "${outpref}.top.variants.csv"
-		File all_plots = "${outpref}${interval}.plots.zip"
+		File all_plots = "${outpref}.plots.zip"
 	}
 
 }
@@ -270,7 +268,14 @@ workflow group_assoc_wf {
 		
 	}
 
-	call catResults {
-		input: all_results = runPaintor.results, outpref = this_outpref
+	if (plot_ld) {
+		call catResults as catResultsLD {
+			input: all_results = runPaintor.results, outpref = this_outpref, all_png = summaryLD.png
+		}
+	}
+	if (!plot_ld){
+		call catResults as catResultsNoLD {
+			input: all_results = runPaintor.results, outpref = this_outpref, all_png = summaryNoLD.png
+		}
 	}
 }
