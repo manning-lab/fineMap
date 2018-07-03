@@ -90,9 +90,10 @@ def Read_Input(locus_file, data_names, ld_files, annotation_file, annotation_col
     data_toplot = data_toplot.values
     position = position.values
     posterior = posterior.values
+    num_var = np.shape(data_toplot)[0]
 
 
-    return [data_toplot, posterior, position, lds, annotation_data, annotation_cols]
+    return [data_toplot, posterior, position, lds, annotation_data, annotation_cols, num_var]
 
 def Plot_Position_Value(position, posterior, threshold, greyscale):
     """Function that plots z-scores, posterior probabilites, other features """
@@ -395,8 +396,8 @@ def Assemble_Figure(data_plots, posterior_plots, heatmaps, annotation_plot, outp
         horizontal = 'n'
         # size_width = "5in"
         # size_height = '11in'
-        size_width = "360px"
-        size_height = "792px"
+        size_width = "432px"
+        size_height = str(432+4*72*len(data_plots))+"px"
     elif len(heatmaps)>1:
         horizontal='y'
         # size_width = '9in'
@@ -599,13 +600,34 @@ def main():
     if(locus_file == None or values == None):
         sys.exit(usage)
 
-    [data_toplot, posterior, position, lds, annotation_data, annotation_cols] = Read_Input(locus_file, values, ld_files, annotation_file, annotation_cols, pthresh)
+    [data_toplot, posterior, position, lds, annotation_data, annotation_cols, num_var] = Read_Input(locus_file, values, ld_files, annotation_file, annotation_cols, pthresh)
 
     # check that we still have some data
     if np.shape(data_toplot)[0] < 1 or np.shape(posterior)[0] < 1 or np.shape(position)[0] < 1 :
-        subprocess.call(['touch', output+'.pdf'])
-        subprocess.call(['touch', output+'.html'])
-        subprocess.call(['touch', output+'.svg'])
+        size_width = "10px"
+        size_height = "10px"
+        fig = sg.SVGFigure(size_width, size_height)
+        svgfile = output+".svg"
+        fig.save(svgfile)
+
+        html_file = open(output+".html",'w+')
+        html_str = '<img src="'+output+'.svg" >'
+        html_file.write(html_str)
+        html_file.close()
+
+        firstline = "".join([
+        '<svg xmlns:xlink="http://www.w3.org/1999/xlink" xmlns="http://www.w3.org/2000/svg" version="1.1" width="',
+        size_width,
+        '" viewBox="0 0 ',
+        size_width.replace("px",""),
+        ' ',
+        size_height.replace("px",""),
+        '" height="',
+        size_height,
+        '">'])
+        command = "sed -i \'2s@.*@"+firstline+"@\' "+output+".svg\n"
+        with open('secondline.txt','w') as f:
+            f.write(command)
         warnings.warn('No variants left to plot, trying removing the pvalue threshold or reviewing the PAINTOR ouput. Returning empty output files.')
         sys.exit(0)
 
@@ -622,7 +644,7 @@ def main():
     data_plots = Plot_Statistic_Value(position, data_toplot, values, greyscale, lds, pval)
 
     # plot LD
-    if lds is not None:
+    if lds is not None and num_var < 400:
         heatmaps = Plot_Heatmap(lds, greyscale, large_ld)
     else:
         heatmaps = None
