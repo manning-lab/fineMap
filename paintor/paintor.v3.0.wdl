@@ -87,7 +87,7 @@ task runPaintor {
 	output {
 		File results = "${outpref}.${interval}.results"
 		File enrichment = "${outpref}.${interval}.enrichment.estimate"
-		File bayes = "${outpref}.${interval}.enrichment.estimate"		
+		File bayes = "${outpref}.${interval}.log.bayesfactor"		
 	}
 }
 
