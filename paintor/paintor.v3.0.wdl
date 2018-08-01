@@ -27,7 +27,7 @@ task preprocess {
 	runtime {
 		docker: "manninglab/finemap:paintor.v3.0"
 		disks: "local-disk ${disk} SSD"
-		memory: "${memory}G"
+		memory: "${memory} GB"
 	}
 
 	output {
@@ -81,7 +81,7 @@ task runPaintor {
 	runtime {
 		docker: "manninglab/finemap:paintor.v3.0"
 		disks: "local-disk ${disk} SSD"
-		memory: "${memory}G"
+		memory: "${memory} GB"
 	}
 	
 	output {
@@ -128,7 +128,7 @@ task summaryLD {
 	runtime {
 		docker: "manninglab/finemap:paintor.canvis"
 		disks: "local-disk ${disk} SSD"
-		memory: "${memory}G"
+		memory: "${memory} GB"
 	}
 	
 	output {
@@ -172,7 +172,7 @@ task summaryNoLD {
 	runtime {
 		docker: "manninglab/finemap:paintor.canvis"
 		disks: "local-disk ${disk} SSD"
-		memory: "${memory}G"
+		memory: "${memory} GB"
 	}
 	
 	output {
@@ -197,7 +197,7 @@ task catResults {
 	runtime {
 		docker: "manninglab/finemap:paintor.v3.0"
 		disks: "local-disk 50 SSD"
-		memory: "5G"
+		memory: "5 GB"
 	}
 
 	output {

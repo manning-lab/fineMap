@@ -21,6 +21,7 @@ pval.col <- input_args[9]
 effect.col <- input_args[10]
 out.pref <- input_args[11]
 
+
 ## # these are from the DCC pipeline, credit -> S. Gogarten 
 .variantDF <- function(gds) {
   data.frame(variant.id=seqGetData(gds, "variant.id"),
